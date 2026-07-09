@@ -381,6 +381,7 @@ const TABS = [
 export default function GroupHome() {
   const navigate    = useNavigate();
   const groupCode   = useGroupStore(s => s.groupCode);
+  const groupName   = useGroupStore(s => s.groupName);
   const isEntered   = useGroupStore(s => s.isEntered);
   const isLoading   = useGroupStore(s => s.isLoading);  // Firebase 로딩 상태
   const currentName = useGroupStore(s => s.currentName);
@@ -522,10 +523,17 @@ export default function GroupHome() {
             )}
             </div>
           </div>
-          <div className="flex items-center gap-1.5 bg-white/80 border border-gray-100
-            px-3 py-1.5 rounded-full shadow-sm">
-            <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"/>
-            <span className="text-[10px] font-black text-gray-700 tracking-widest">{groupCode}</span>
+          <div className="flex flex-col items-end gap-1">
+            {groupName && (
+              <span className="text-xs font-bold text-gray-700 max-w-[140px] truncate text-right">
+                {groupName}
+              </span>
+            )}
+            <div className="flex items-center gap-1.5 bg-white/80 border border-gray-100
+              px-3 py-1.5 rounded-full shadow-sm flex-shrink-0">
+              <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"/>
+              <span className="text-[10px] font-black text-gray-700 tracking-widest">{groupCode}</span>
+            </div>
           </div>
         </div>
       </div>
