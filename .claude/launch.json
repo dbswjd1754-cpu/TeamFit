@@ -3,7 +3,7 @@
   "configurations": [
     {
       "name": "teamfit-dev",
-      "runtimeExecutable": "node",
+      "runtimeExecutable": ".dev-node/node-v22.14.0-darwin-arm64/bin/node",
       "runtimeArgs": ["node_modules/vite/bin/vite.js"],
       "port": 5173,
       "autoPort": true
