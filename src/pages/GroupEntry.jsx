@@ -151,7 +151,7 @@ export default function GroupEntry() {
         {/* ── 로고 ── */}
         <div className="flex flex-col items-center mb-6">
           <img
-            src="/teamfit-start-icon-20260707.png"
+            src="/teamfit-start-icon-20260709.png"
             alt="TeamFit"
             className="w-[100px] h-auto mx-auto"
             style={{
@@ -172,7 +172,7 @@ export default function GroupEntry() {
               animationFillMode: 'both',
             }}
           />
-          <div className="flex items-baseline gap-0 mt-2 mb-1">
+          <div className="flex items-baseline gap-0 mb-1">
             <span className="text-[30px] font-black text-gray-900 tracking-tight">Team</span>
             <span className="text-[30px] font-black tracking-tight" style={{ color: '#10B981' }}>Fit</span>
           </div>
@@ -227,8 +227,8 @@ export default function GroupEntry() {
                 hover:border-blue-300 hover:shadow-md hover:-translate-y-0.5
                 active:scale-[0.98] transition-all duration-150"
             >
-              <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center text-lg flex-shrink-0">
-                🚀
+              <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center flex-shrink-0">
+                <img src="/icon-group-create-20260709.png" alt="" className="w-8 h-8 object-contain"/>
               </div>
               <div className="flex-1 min-w-0">
                 <p className="font-black text-sm text-gray-900">그룹 만들기</p>
@@ -247,8 +247,8 @@ export default function GroupEntry() {
                 hover:border-emerald-300 hover:shadow-md hover:-translate-y-0.5
                 active:scale-[0.98] transition-all duration-150"
             >
-              <div className="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center text-lg flex-shrink-0">
-                🔑
+              <div className="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center flex-shrink-0">
+                <img src="/icon-group-join-20260709.png" alt="" className="w-8 h-8 object-contain"/>
               </div>
               <div className="flex-1 min-w-0">
                 <p className="font-black text-sm text-gray-900">그룹 코드 입력</p>
@@ -267,8 +267,8 @@ export default function GroupEntry() {
                 hover:border-gray-300 hover:shadow-md hover:-translate-y-0.5
                 active:scale-[0.98] transition-all duration-150"
             >
-              <div className="w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center text-lg flex-shrink-0">
-                📂
+              <div className="w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center flex-shrink-0">
+                <img src="/icon-my-groups-20260709.png" alt="" className="w-8 h-8 object-contain"/>
               </div>
               <div className="flex-1 min-w-0">
                 <p className="font-black text-sm text-gray-900">내 그룹 바로가기</p>

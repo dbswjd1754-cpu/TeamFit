@@ -6,63 +6,141 @@
  *  - navigate에 replace 제거 → 결과 페이지에서 location.state 안전 수신
  *  - state 검증을 useEffect 내부에서 처리 (hooks 규칙 준수)
  */
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 
-/* ── 퍼즐 애니메이션 ── */
-function PuzzleAnimation() {
-  const [apart, setApart] = useState(false);
+/* ── 퍼즐 애니메이션 ──
+ * 0~40%   : 평소보다 약간 떨어진 상태에서 아주 약한 bounce로 흔들림
+ * 40~80%  : easing과 함께 서서히 가까워짐
+ * 80~100% : 퍼즐 홈(소켓)과 돌기가 정확히 맞물리는 위치까지 이동
+ * done    : 완전히 맞물린 상태로 고정 + 짧은 scale pulse·반짝임
+ *
+ * SEP(0)  = 평소보다 떨어진 기준 위치 (각 조각 18px씩 바깥쪽)
+ * LOCK(1) = 실제로 소켓·돌기가 겹치는 맞물림 위치 (각 조각 20px씩 안쪽 — 실측 확인값)
+ */
+const SEP  = 18;
+const LOCK = 20;
+const BOUNCE_AMPLITUDE = 3;
+
+const easeInOutCubic = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
+
+// progress(0~100) → closeAmount(0~1): 0=떨어짐, 1=완전 맞물림
+function closeAmountFor(progress) {
+  if (progress <= 40) return 0;
+  if (progress <= 80) {
+    const t = (progress - 40) / 40;
+    return easeInOutCubic(t) * 0.65;
+  }
+  const t = Math.min(1, (progress - 80) / 20);
+  return 0.65 + easeInOutCubic(t) * 0.35;
+}
+
+function PuzzleAnimation({ progress, done }) {
+  const leftRef  = useRef(null);
+  const rightRef = useRef(null);
+  const rafRef   = useRef(null);
+  const startRef = useRef(null);
 
   useEffect(() => {
-    const tick = () => {
-      setApart(true);
-      setTimeout(() => setApart(false), 800);
+    if (done) {
+      // 완료 — 완전히 맞물린 위치로 고정 (더 이상 흔들리지 않음)
+      if (leftRef.current)  leftRef.current.style.transform  = `translateX(${LOCK}px)`;
+      if (rightRef.current) rightRef.current.style.transform = `translateX(${-LOCK}px)`;
+      return;
+    }
+
+    const animate = (now) => {
+      if (startRef.current == null) startRef.current = now;
+      const elapsed = now - startRef.current;
+
+      const c = closeAmountFor(progress);
+      // 0~40% 구간에서만 살짝 남아있는 bounce — 40%부터는 자연스럽게 사라짐
+      const bounceFade = Math.max(0, 1 - progress / 40);
+      const sway = Math.sin(elapsed / 550) * BOUNCE_AMPLITUDE * bounceFade;
+
+      const green = -SEP + c * (SEP + LOCK) - sway;
+      const blue  = -green; // 항상 대칭으로 반대쪽에서 같은 만큼 이동
+
+      if (leftRef.current)  leftRef.current.style.transform  = `translateX(${green}px)`;
+      if (rightRef.current) rightRef.current.style.transform = `translateX(${blue}px)`;
+
+      rafRef.current = requestAnimationFrame(animate);
     };
-    tick();
-    const id = setInterval(tick, 1800);
-    return () => clearInterval(id);
-  }, []);
+
+    rafRef.current = requestAnimationFrame(animate);
+    return () => {
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    };
+  }, [progress, done]);
 
   return (
     <div className="flex items-center justify-center" style={{ height: 90 }}>
-      <div style={{
-        transform: apart ? 'translateX(-14px)' : 'translateX(0)',
-        transition: 'transform 0.55s cubic-bezier(0.34,1.56,0.64,1)',
-      }}>
-        <svg width="64" height="64" viewBox="0 0 66 66" fill="none">
-          <rect x="4" y="14" width="44" height="44" rx="10" fill="#7DCFB6"/>
-          <ellipse cx="26" cy="11" rx="8" ry="7" fill="#7DCFB6"/>
-          <ellipse cx="48" cy="36" rx="7" ry="8" fill="#ECFDF5"/>
-          <ellipse cx="26" cy="59" rx="8" ry="7" fill="#7DCFB6"/>
-          <rect x="9" y="19" width="34" height="34" rx="8" fill="#8ED8C4" opacity="0.35"/>
-          <ellipse cx="19" cy="34" rx="3.2" ry="3.6" fill="#2D6A5A"/>
-          <ellipse cx="18" cy="33" rx="1" ry="1" fill="white" opacity="0.9"/>
-          <ellipse cx="35" cy="34" rx="3.2" ry="3.6" fill="#2D6A5A"/>
-          <ellipse cx="34" cy="33" rx="1" ry="1" fill="white" opacity="0.9"/>
-          <path d="M21 42 Q27 48 33 42" stroke="#2D6A5A" strokeWidth="2" strokeLinecap="round" fill="none"/>
-          <ellipse cx="14" cy="40" rx="3" ry="2" fill="#F9A8D4" opacity="0.55"/>
-          <ellipse cx="40" cy="40" rx="3" ry="2" fill="#F9A8D4" opacity="0.55"/>
-        </svg>
+      <div
+        className={done ? 'puzzle-complete-pulse' : ''}
+        style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+      >
+        <div ref={leftRef} style={{ transform: `translateX(${-SEP}px)` }}>
+          <svg width="64" height="64" viewBox="0 0 66 66" fill="none">
+            <rect x="4" y="14" width="44" height="44" rx="10" fill="#7DCFB6"/>
+            <ellipse cx="26" cy="11" rx="8" ry="7" fill="#7DCFB6"/>
+            <ellipse cx="48" cy="36" rx="7" ry="8" fill="#ECFDF5"/>
+            <ellipse cx="26" cy="59" rx="8" ry="7" fill="#7DCFB6"/>
+            <rect x="9" y="19" width="34" height="34" rx="8" fill="#8ED8C4" opacity="0.35"/>
+            <ellipse cx="19" cy="34" rx="3.2" ry="3.6" fill="#2D6A5A"/>
+            <ellipse cx="18" cy="33" rx="1" ry="1" fill="white" opacity="0.9"/>
+            <ellipse cx="35" cy="34" rx="3.2" ry="3.6" fill="#2D6A5A"/>
+            <ellipse cx="34" cy="33" rx="1" ry="1" fill="white" opacity="0.9"/>
+            <path d="M21 42 Q27 48 33 42" stroke="#2D6A5A" strokeWidth="2" strokeLinecap="round" fill="none"/>
+            <ellipse cx="14" cy="40" rx="3" ry="2" fill="#F9A8D4" opacity="0.55"/>
+            <ellipse cx="40" cy="40" rx="3" ry="2" fill="#F9A8D4" opacity="0.55"/>
+          </svg>
+        </div>
+        <div ref={rightRef} style={{ transform: `translateX(${SEP}px)` }}>
+          <svg width="64" height="64" viewBox="0 0 66 66" fill="none">
+            <rect x="18" y="14" width="44" height="44" rx="10" fill="#93C5FD"/>
+            <ellipse cx="18" cy="36" rx="7" ry="8" fill="#93C5FD"/>
+            <ellipse cx="40" cy="11" rx="8" ry="7" fill="#EFF6FF"/>
+            <ellipse cx="40" cy="59" rx="8" ry="7" fill="#93C5FD"/>
+            <rect x="23" y="19" width="34" height="34" rx="8" fill="#BAD9FC" opacity="0.35"/>
+            <ellipse cx="31" cy="34" rx="3.2" ry="3.6" fill="#1E3A8A"/>
+            <ellipse cx="30" cy="33" rx="1" ry="1" fill="white" opacity="0.9"/>
+            <ellipse cx="47" cy="34" rx="3.2" ry="3.6" fill="#1E3A8A"/>
+            <ellipse cx="46" cy="33" rx="1" ry="1" fill="white" opacity="0.9"/>
+            <path d="M33 42 Q39 48 45 42" stroke="#1E3A8A" strokeWidth="2" strokeLinecap="round" fill="none"/>
+            <ellipse cx="26" cy="40" rx="3" ry="2" fill="#F9A8D4" opacity="0.55"/>
+            <ellipse cx="52" cy="40" rx="3" ry="2" fill="#F9A8D4" opacity="0.55"/>
+          </svg>
+        </div>
+        {done && (
+          <>
+            <span className="puzzle-sparkle" style={{ top: -6, left: 8 }}>✨</span>
+            <span className="puzzle-sparkle" style={{ top: 4, right: 4, animationDelay: '0.15s' }}>✨</span>
+            <span className="puzzle-sparkle" style={{ bottom: -4, left: '45%', animationDelay: '0.3s' }}>✨</span>
+          </>
+        )}
       </div>
-      <div style={{
-        transform: apart ? 'translateX(14px)' : 'translateX(0)',
-        transition: 'transform 0.55s cubic-bezier(0.34,1.56,0.64,1)',
-      }}>
-        <svg width="64" height="64" viewBox="0 0 66 66" fill="none">
-          <rect x="18" y="14" width="44" height="44" rx="10" fill="#93C5FD"/>
-          <ellipse cx="18" cy="36" rx="7" ry="8" fill="#93C5FD"/>
-          <ellipse cx="40" cy="11" rx="8" ry="7" fill="#EFF6FF"/>
-          <ellipse cx="40" cy="59" rx="8" ry="7" fill="#93C5FD"/>
-          <rect x="23" y="19" width="34" height="34" rx="8" fill="#BAD9FC" opacity="0.35"/>
-          <ellipse cx="31" cy="34" rx="3.2" ry="3.6" fill="#1E3A8A"/>
-          <ellipse cx="30" cy="33" rx="1" ry="1" fill="white" opacity="0.9"/>
-          <ellipse cx="47" cy="34" rx="3.2" ry="3.6" fill="#1E3A8A"/>
-          <ellipse cx="46" cy="33" rx="1" ry="1" fill="white" opacity="0.9"/>
-          <path d="M33 42 Q39 48 45 42" stroke="#1E3A8A" strokeWidth="2" strokeLinecap="round" fill="none"/>
-          <ellipse cx="26" cy="40" rx="3" ry="2" fill="#F9A8D4" opacity="0.55"/>
-          <ellipse cx="52" cy="40" rx="3" ry="2" fill="#F9A8D4" opacity="0.55"/>
-        </svg>
-      </div>
+      <style>{`
+        .puzzle-complete-pulse {
+          position: relative;
+          animation: puzzlePulse 0.8s cubic-bezier(0.34,1.56,0.64,1) 1;
+        }
+        @keyframes puzzlePulse {
+          0%   { transform: scale(1); }
+          45%  { transform: scale(1.05); }
+          100% { transform: scale(1); }
+        }
+        .puzzle-sparkle {
+          position: absolute;
+          font-size: 14px;
+          opacity: 0;
+          animation: puzzleSparkle 0.8s ease-out 1;
+        }
+        @keyframes puzzleSparkle {
+          0%   { opacity: 0; transform: scale(0.4); }
+          40%  { opacity: 1; transform: scale(1.1); }
+          100% { opacity: 0; transform: scale(0.9) translateY(-6px); }
+        }
+      `}</style>
     </div>
   );
 }
@@ -139,7 +217,7 @@ export default function AnalysisLoading({ mode = 'supplement' }) {
       style={{ background: 'linear-gradient(160deg, #F0FDF9 0%, #EFF6FF 55%, #F5F3FF 100%)' }}>
       <div className="w-full max-w-sm flex flex-col items-center gap-7">
 
-        <PuzzleAnimation />
+        <PuzzleAnimation progress={progress} done={done} />
 
         {!done ? (
           <>
