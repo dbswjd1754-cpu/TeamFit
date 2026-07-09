@@ -146,7 +146,7 @@ const TYPE_REASONS = {
 /* ══ 탭 정의 ══════════════════════════════════ */
 const TABS = [
   { id: 'ai',      Icon: TabIconAI,      label: 'AI 추천',    desc: '성향 · 도메인 · 협업 스타일 · 팀 밸런스를 종합해 가장 적합한 팀원을 추천합니다.' },
-  { id: 'similar', Icon: TabIconSimilar, label: '비슷한 성향', desc: '나와 협업 스타일이 가장 유사한 팀원을 추천합니다.' },
+  { id: 'similar', Icon: TabIconSimilar, label: '비슷한 성향', desc: '현재 팀과 협업 스타일이 가장 유사한 팀원을 추천합니다.' },
   { id: 'domain',  Icon: TabIconDomain,  label: '같은 도메인', desc: '관심 도메인이 가장 많이 일치하는 팀원을 추천합니다.' },
   { id: 'balance', Icon: TabIconBalance, label: '밸런스 우선', desc: '현재 팀에서 부족한 성향을 가장 잘 보완하는 팀원을 추천합니다.' },
 ];
@@ -543,7 +543,7 @@ function srItemState(positive, neutral) {
 /* ══ 추천 카드 컴포넌트 ════════════════════════ */
 function RecommendCard({ rec, rank, teamMembers, tab }) {
   const [showDetail, setShowDetail] = useState(false);
-  const { user, scores, aiSummary } = rec;
+  const { user, scores } = rec;
   const type   = TYPES[user.dominantType];
   const score  = rec.score ?? scores?.total ?? 0;
   const barClr = srScoreBarColor(score);
@@ -692,25 +692,6 @@ function RecommendCard({ rec, rank, teamMembers, tab }) {
                 </div>
               )}
             </div>
-
-            {/* AI 추천 이유 — 팀 상황 기반 구체적 근거 */}
-            {aiSummary && (
-              <div className="rounded-xl px-2.5 py-2 mt-1 border border-emerald-100"
-                style={{background:'linear-gradient(135deg,#ECFDF5 0%,#EFF6FF 100%)'}}>
-                <p className="text-[9px] font-black text-emerald-600 mb-1 uppercase tracking-widest">
-                  AI 추천 이유
-                </p>
-                <div className="flex flex-wrap gap-1">
-                  {aiSummary.split(' + ').map((reason, i) => (
-                    <span key={i}
-                      className="text-[10px] text-emerald-700 font-semibold bg-white
-                        px-2 py-0.5 rounded-full border border-emerald-200">
-                      ✓ {reason}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            )}
           </div>
         </div>
       </div>
@@ -763,16 +744,6 @@ function RecommendSection({ teamMembers, groupCode, distribution }) {
 
   const teamProfile = makeTeamProfile(teamMembers, groupCode) || me;
 
-  // ★ 팀 부족 성향 계산 (추천 근거 생성용)
-  const KEYS_R = ['A','B','C','D'];
-  const sumR = { A:0,B:0,C:0,D:0 };
-  teamMembers.forEach(m => KEYS_R.forEach(k => { sumR[k]+=(m.typeRatio?.[k]||0); }));
-  const totR = KEYS_R.reduce((s,k)=>s+sumR[k],0)||1;
-  const teamRatioR = Object.fromEntries(KEYS_R.map(k=>[k,Math.round((sumR[k]/totR)*100)]));
-  const lackedR    = calcLackingTypes(teamMembers);
-  const leastKeyR  = lackedR[0];
-  const lackingOrder = lackedR; // ★ lackingOrder = 부족 성향 배열 (부족도 내림차순)
-
   // ★ AI 탭: 종합 점수(styleSim×0.40 + domainPct×0.30 + prioPct×0.20 + balanceImp×0.10) 순으로 정렬
   //   — 리스트 순위와 점수가 항상 일치하도록, 부족 성향 보유 여부로 순위를 뒤집지 않음
   function buildTeamSuppRecs(cands) {
@@ -795,29 +766,10 @@ function RecommendSection({ teamMembers, groupCode, distribution }) {
     });
 
     // ★ 리스트에 보이는 순위 = 점수 순위 (항상 일치)
+    //   aiSummary는 buildTabRecommendations 내부에서 breakdown 기여도 기반으로
+    //   이미 동적으로 생성되어 있음 (buildSupplementAISummary) — 별도 재계산 없이 그대로 사용
     results.sort((a,b) => b.score - a.score);
-    // ★ 팀 기반 aiSummary 주입 (구체적 추천 이유, 최대 2개 — 상세정보에서도 동일하게 재사용됨)
-    return results.map(rec => {
-      const u = rec.user;
-      const bd = rec.breakdown || {};
-      const uRatioArr = Object.entries(u.typeRatio||{}).sort((a,b)=>b[1]-a[1]);
-      const top2 = uRatioArr.slice(0,2).filter(([,v])=>v>15);
-      const hasLeast = (u.typeRatio?.[leastKeyR]||0) > 25;
-      const leastName = TYPES[leastKeyR]?.name||'';
-      const leastPctTeam = teamRatioR[leastKeyR]||0;
-      const reasons = [];
-      if(hasLeast)
-        reasons.push(`현재 팀 ${leastName} ${leastPctTeam}% → 보완 가능`);
-      if((bd.domainCount||0)>0)
-        reasons.push(`도메인 ${bd.domainCount}개 일치`);
-      if((bd.styleSim||0)>=60)
-        reasons.push(`협업 스타일 일치`);
-      else if((bd.styleSim||0)>=40)
-        reasons.push(`협업 방향성 유사`);
-      if(!hasLeast && reasons.length===0)
-        reasons.push(`팀 밸런스 개선 기여`);
-      return { ...rec, aiSummary: reasons.slice(0, 2).join(' + ') };
-    });
+    return results;
   }
 
   // 탭별 후보군 선정

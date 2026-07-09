@@ -554,57 +554,89 @@ function buildSupplementCardReasons(candidate, teamMembers, tab, me) {
 }
 
 // ─────────────────────────────────────────────
-// 탭별 AI 한 줄 요약
-// "왜 이 사람이 추천됐는지"를 한 문장으로
+// 탭별 AI 추천 이유 — 후보별 실제 기여도 기반 동적 생성
+//
+//   고정된 문구를 탭 종류로만 분기하지 않고, 이미 계산된 breakdown
+//   (styleSim/domainPct/prioPct/balanceGain × 탭별 weights = contributions)을
+//   근거값(value)으로 사용해 "이 후보의 점수에 가장 크게 기여한 요소"부터
+//   정렬 후 최대 4개까지 노출한다 → 후보마다, 탭마다 다른 조합이 나옴
 // ─────────────────────────────────────────────
-function buildSupplementAISummary(candidate, teamMembers, tab, score) {
-  const d = extractReasonData(candidate, teamMembers, null);
+function buildSupplementAISummary(candidate, teamMembers, tab, score, breakdown) {
+  const bd = breakdown || {};
+  const {
+    styleSim = 0,
+    commonDomains = [],
+    contributions = {},
+    prioMatch, prioRate = 0, prioOther,
+    balanceGain = 0,
+    lacksType, lacksTypeName, candidateLacksStrong,
+  } = bd;
 
-  if (tab === 'ai') {
-    // AI: 가장 임팩트 큰 요소 1~2개 조합
-    if (d.complementsLack && d.commonDomains.length >= 1) {
-      return `팀의 ${d.leastName} 보완과 도메인 일치를 종합한 최적 추천입니다.`;
-    }
-    if (d.gain > 10 && d.commonDomains.length >= 2) {
-      return `도메인 ${d.commonDomains.length}개 일치에 팀 밸런스 +${d.gain}점 — 여러 요소가 고루 맞습니다.`;
-    }
-    if (d.commonDomains.length >= 2) {
-      return `관심 도메인이 ${d.commonDomains.length}개 겹쳐 빠른 공감대 형성이 가능한 팀원입니다.`;
-    }
-    if (d.gain > 5) {
-      return `팀 밸런스를 +${d.gain}점 끌어올릴 수 있는 팀원입니다.`;
-    }
+  const items = []; // { value: 정렬 기준 점수, text: 표시 문구 }
+
+  // ① 협업 스타일 유사도
+  if (styleSim > 0) {
+    const text = styleSim >= 85
+      ? `협업 스타일 유사도가 ${styleSim}%로 매우 높습니다.`
+      : styleSim >= 60
+        ? `협업 스타일 유사도가 ${styleSim}%로 높습니다.`
+        : `협업 스타일 유사도가 ${styleSim}%입니다.`;
+    items.push({ value: contributions.style || 0, text });
+  }
+
+  // ② 관심 도메인 일치
+  if (commonDomains.length >= 3) {
+    items.push({ value: contributions.domain || 0,
+      text: `공통 관심 도메인 ${commonDomains.length}개가 모두 일치합니다 (${commonDomains.slice(0,3).join(', ')}).` });
+  } else if (commonDomains.length === 2) {
+    items.push({ value: contributions.domain || 0,
+      text: `공통 관심 도메인이 ${commonDomains.length}개 일치합니다 (${commonDomains.join(', ')}).` });
+  } else if (commonDomains.length === 1) {
+    items.push({ value: contributions.domain || 0,
+      text: `공통 관심 도메인 "${commonDomains[0]}"이 일치합니다.` });
+  }
+
+  // ③ 협업 우선순위
+  if (prioMatch) {
+    items.push({ value: contributions.priority || 0, text: `프로젝트 우선순위 "${prioOther}"가 팀과 동일합니다.` });
+  } else if (prioRate >= 50) {
+    items.push({ value: contributions.priority || 0, text: '프로젝트 진행 방향이 팀과 유사합니다.' });
+  }
+
+  // ④ 팀 밸런스 개선
+  if (balanceGain > 0) {
+    items.push({ value: (contributions.balance || 0) + balanceGain, text: `팀 밸런스를 +${balanceGain}점 개선합니다.` });
+  }
+
+  // ⑤ 부족 성향 보완 — 탭 가중치와 무관하게 항상 설득력 있는 근거이므로 기본 우선순위를 확보
+  if (lacksType && candidateLacksStrong) {
+    const pct = Math.round(candidate.typeRatio?.[lacksType] || 0);
+    items.push({
+      value: 35 + pct * 0.3,
+      text: pct >= 40
+        ? `현재 부족한 ${lacksTypeName} 성향을 가장 많이 보완합니다 (${pct}%).`
+        : `현재 팀에 부족한 ${lacksTypeName} 성향을 보완합니다.`,
+    });
+  }
+
+  // ⑥ 역할 다양성 증가 (후보 합류 전후 비교)
+  const roleDivBefore = calcTeamBalanceScoreBreakdown(teamMembers).roleDiversity;
+  const roleDivAfter  = calcTeamBalanceScoreBreakdown([...teamMembers, candidate]).roleDiversity;
+  if (roleDivAfter > roleDivBefore) {
+    items.push({ value: 15, text: '역할 다양성이 증가합니다.' });
+  }
+
+  if (items.length === 0) {
     return score >= 65
-      ? '여러 요소를 종합해 현재 팀에 가장 잘 어울리는 후보입니다.'
-      : '다양한 관점으로 팀에 새로운 시각을 더해줄 수 있는 팀원입니다.';
+      ? '종합적으로 현재 팀과 잘 어울리는 팀원입니다.'
+      : '다양한 시각으로 팀에 새로운 관점을 더해줄 수 있는 팀원입니다.';
   }
 
-  if (tab === 'domain') {
-    if (d.commonDomains.length >= 3) return `관심 도메인 3개가 모두 일치해 같은 방향에서 바로 협업할 수 있는 팀원입니다.`;
-    if (d.commonDomains.length === 2) return `관심 도메인 2개가 겹쳐 빠른 공감대 형성이 가능한 팀원입니다.`;
-    if (d.commonDomains.length === 1) return `${d.commonDomains[0]} 도메인이 일치해 같은 분야에서 시너지를 낼 수 있어요.`;
-    return '다양한 도메인 배경으로 팀에 새로운 관점을 더해줄 수 있어요.';
-  }
-
-  if (tab === 'similar') {
-    if (d.sim >= 80) return `협업 스타일 유사도 ${d.sim}%로 의사결정 방식이 잘 맞는 팀원입니다.`;
-    if (d.sim >= 60) return `협업 스타일 유사도 ${d.sim}%로 큰 방향에서 호흡을 맞추기 수월한 팀원입니다.`;
-    return '나와 협업 스타일이 가장 가까운 상위 후보 중 하나입니다.';
-  }
-
-  if (tab === 'balance') {
-    if (d.complementsLack && d.gain > 0)
-      return `팀에 부족한 ${d.leastName} 역할을 채우며 밸런스를 +${d.gain}점 끌어올리는 팀원입니다.`;
-    if (d.complementsLack)
-      return `현재 팀에서 가장 부족한 ${d.leastName} 성향을 효과적으로 보완하는 팀원입니다.`;
-    if (d.gain > 0)
-      return `팀 밸런스를 +${d.gain}점 개선해 전체적인 균형을 맞춰줄 수 있는 팀원입니다.`;
-    return '팀 성향 분포 균형에 도움이 되는 팀원입니다.';
-  }
-
-  return score >= 65
-    ? '종합적으로 현재 팀과 잘 어울리는 팀원입니다.'
-    : '다양한 시각으로 팀에 새로운 관점을 더해줄 수 있는 팀원입니다.';
+  return items
+    .sort((a, b) => b.value - a.value)
+    .slice(0, 4)
+    .map(it => it.text)
+    .join(' + ');
 }
 
 // ─────────────────────────────────────────────
@@ -733,7 +765,7 @@ export function buildTabRecommendations(tab, me, candidates, teamMembers) {
     };
 
     const reasons   = buildSupplementCardReasons(candidate, teamMembers, tab, me);
-    const aiSummary = buildSupplementAISummary(candidate, teamMembers, tab, score);
+    const aiSummary = buildSupplementAISummary(candidate, teamMembers, tab, score, breakdown);
 
     // 디버그 로그 (개발 환경에서 score 산출 근거 확인)
     if (typeof __DEV__ !== 'undefined' && __DEV__ || typeof process !== 'undefined' && process.env?.NODE_ENV === 'development') {

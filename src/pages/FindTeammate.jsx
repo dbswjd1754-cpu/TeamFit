@@ -31,29 +31,6 @@ function getUserPersona(user) {
   return buildPersona(user.typeRatio || {});
 }
 
-/* ── AI 한 줄 추천 생성 ── */
-function genAIOneLiner(rec, tab, myDomains) {
-  const { breakdown: bd } = rec;
-  const commonDomains = (bd?.commonDomains || []);
-  if (tab === 'ai') {
-    if ((bd?.styleSim || 0) >= 70) return '당신과 가장 잘 맞는 협업 스타일을 가진 팀원입니다.';
-    if (commonDomains.length >= 2)  return `${commonDomains[0]} 등 공통 관심사가 많아 방향을 맞추기 쉽습니다.`;
-    if (bd?.prioMatch)              return '프로젝트 진행 방식이 매우 유사합니다.';
-    return '성향·도메인·스타일을 종합해 추천된 최적의 팀원입니다.';
-  }
-  if (tab === 'similar') {
-    if ((bd?.styleSim || 0) >= 80) return '당신과 협업 방식이 거의 동일한 팀원입니다.';
-    if ((bd?.styleSim || 0) >= 60) return '당신과 협업 방식이 가장 비슷한 팀원입니다.';
-    return '성향이 유사해 자연스럽게 호흡을 맞출 수 있습니다.';
-  }
-  if (tab === 'domain') {
-    if (commonDomains.length >= 3) return '같은 관심 분야가 많아 프로젝트 방향을 맞추기 쉽습니다.';
-    if (commonDomains.length >= 1) return `${commonDomains[0]} 분야에서 함께 성장할 수 있는 팀원입니다.`;
-    return '다양한 도메인 경험으로 팀에 새로운 시각을 더해줄 수 있습니다.';
-  }
-  return '';
-}
-
 /* ── AI 추천 이유 목록 ── */
 function genAIReasons(rec, tab) {
   const { score, breakdown: bd } = rec;
@@ -136,12 +113,11 @@ function calcPersonaCompatScore(meObj, candidatePersonaKey, myPersonaKey) {
 /* ══════════════════════════════════════════════
    추천 카드 (탭별 핵심 정보 차별화)
 ══════════════════════════════════════════════ */
-function RecommendCard({ rec, rank, tab, myDomains, onOpen }) {
+function RecommendCard({ rec, rank, tab, onOpen }) {
   const { user, score, breakdown: bd } = rec;
   const persona       = getUserPersona(user);
   const accent        = TAB_ACCENT[tab];
   const commonDomains = bd?.commonDomains || [];
-  const oneLiner      = genAIOneLiner(rec, tab, myDomains);
   const reasons       = genAIReasons(rec, tab);
   const TCOLS         = { A:'#EF4444', B:'#10B981', C:'#8B5CF6', D:'#F59E0B' };
   const tColor        = TCOLS[persona.key?.[0]] || TCOLS[user.dominantType] || '#CBD5E1';
@@ -151,7 +127,7 @@ function RecommendCard({ rec, rank, tab, myDomains, onOpen }) {
       className="w-full bg-white rounded-2xl p-4 border-2 border-gray-50 shadow-sm
         text-left active:scale-[0.99] transition-transform cursor-pointer"
       onClick={() => onOpen(rec)}>
-      <div className="flex items-start gap-3">
+      <div className="flex items-center gap-3">
         {/* 순위 + 아바타 */}
         <div className="flex flex-col items-center gap-1 flex-shrink-0">
           <span className="text-[10px] font-black text-gray-400">{rank}</span>
@@ -176,71 +152,33 @@ function RecommendCard({ rec, rank, tab, myDomains, onOpen }) {
             </span>
           </div>
 
-          {/* ── 탭별 핵심 지표 1개 ── */}
-
-          {/* AI 추천: 매칭 적합도 % */}
-          {tab === 'ai' && (
-            <div className="flex items-center gap-2 mb-2">
-              <span className="text-[10px] text-gray-500 flex-shrink-0">매칭 적합도</span>
-              <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                <div className="h-full rounded-full" style={{ width:`${score}%`, backgroundColor: accent }}/>
-              </div>
-              <span className="text-xs font-black flex-shrink-0" style={{ color: accent }}>
-                {score}%
-              </span>
+          {/* ── 탭 공통 핵심 지표: 매칭 적합도 (3개 탭 모두 동일 지표·동일 레이아웃) ── */}
+          <div className="flex items-center gap-2 mb-2">
+            <span className="text-[10px] text-gray-500 flex-shrink-0">매칭 적합도</span>
+            <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+              <div className="h-full rounded-full" style={{ width:`${score}%`, backgroundColor: accent }}/>
             </div>
-          )}
+            <span className="text-xs font-black flex-shrink-0" style={{ color: accent }}>
+              {score}%
+            </span>
+          </div>
 
-          {/* 비슷한 성향: 성향 유사도 % */}
-          {tab === 'similar' && (
-            <div className="flex items-center gap-2 mb-2">
-              <span className="text-[10px] text-gray-500 flex-shrink-0">성향 유사도</span>
-              <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                <div className="h-full rounded-full"
-                  style={{ width:`${bd?.styleSim||0}%`, backgroundColor: accent }}/>
-              </div>
-              <span className="text-xs font-black flex-shrink-0" style={{ color: accent }}>
-                {bd?.styleSim||0}%
-              </span>
-            </div>
-          )}
-
-          {/* 같은 도메인: 공통 도메인 N개 일치 */}
+          {/* 같은 도메인 탭 전용 보조 배지 — 매칭 적합도를 보완하는 근거 정보 */}
           {tab === 'domain' && (
-            <div className="flex items-center gap-2 mb-2">
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ backgroundColor: accent }}/>
               <span className="text-[10px] text-gray-500 flex-shrink-0">공통 도메인</span>
-              <div className="flex flex-wrap gap-1 flex-1">
-                {commonDomains.slice(0,3).map(d => (
-                  <span key={d} className="text-[10px] font-semibold px-2 py-0.5 rounded-full border"
-                    style={{ color: accent, borderColor: accent+'40', backgroundColor: accent+'0D' }}>
-                    {d}
-                  </span>
-                ))}
-              </div>
-              <span className="text-xs font-black flex-shrink-0" style={{ color: accent }}>
+              {commonDomains.slice(0,3).map(d => (
+                <span key={d} className="text-[10px] font-semibold px-2 py-0.5 rounded-full border"
+                  style={{ color: accent, borderColor: accent+'40', backgroundColor: accent+'0D' }}>
+                  {d}
+                </span>
+              ))}
+              <span className="text-[10px] font-bold flex-shrink-0" style={{ color: accent }}>
                 {commonDomains.length}개 일치
               </span>
             </div>
           )}
-
-          {/* AI 한 줄 추천 — 상단 탭 버튼과 동일한 블루→퍼플 그라데이션 */}
-          <div className="rounded-xl px-2.5 py-1.5 mt-1.5"
-            style={{
-              background: 'linear-gradient(135deg, rgba(16,185,129,0.08) 0%, rgba(59,130,246,0.08) 50%, rgba(139,92,246,0.08) 100%)',
-              border: '1px solid rgba(99,102,241,0.15)',
-            }}>
-            <div className="flex items-start gap-1.5">
-              <span className="text-[11px] flex-shrink-0 mt-0.5">🤖</span>
-              <div className="flex items-center gap-1 flex-shrink-0 mt-0.5">
-                <span className="text-[9px] font-black tracking-wider"
-                  style={{ background:'linear-gradient(135deg,#10B981,#3B82F6)', WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent' }}>
-                  AI
-                </span>
-                <span className="text-[9px] text-gray-300">│</span>
-              </div>
-              <p className="text-[10px] leading-relaxed text-gray-600">{oneLiner}</p>
-            </div>
-          </div>
         </div>
       </div>
     </button>
@@ -608,9 +546,9 @@ export default function FindTeammate() {
   };
 
   const TAB_DESC = {
-    ai:     'Persona 궁합 · 협업 스타일 · 도메인을 종합해 가장 잘 맞는 팀원을 추천합니다.',
-    similar:'나와 협업 방식이 가장 유사한 팀원을 Persona 중심으로 추천합니다.',
-    domain: '공통 관심 도메인이 가장 많이 일치하는 팀원을 추천합니다.',
+    ai:     '성향 · 협업 스타일 · 관심 도메인을 종합하여 가장 적합한 팀원을 추천합니다.',
+    similar:'협업 성향 유사도를 가장 높은 비중으로 반영하여 추천하며, 관심 도메인과 팀 선호 스타일도 함께 고려해 최종 매칭 적합도 순으로 제공합니다.',
+    domain: '공통 관심 도메인을 가장 높은 비중으로 반영하여 함께 성장하기 좋은 팀원을 추천합니다.',
   };
 
   return (
@@ -646,9 +584,9 @@ export default function FindTeammate() {
 
           {/* 안내 카드 */}
           <div className="bg-blue-50 border border-blue-100 rounded-2xl px-4 py-3">
-            <p className="text-xs font-bold text-blue-700 mb-0.5">나 1명 기준 · 개인 매칭</p>
+            <p className="text-xs font-bold text-blue-700 mb-0.5">개인 맞춤 추천</p>
             <p className="text-xs text-blue-600 leading-relaxed">
-              그룹 전체 멤버 중 나와 가장 잘 맞는 팀원을 Persona 기반으로 추천해드려요.
+              나와 가장 잘 맞는 팀원을 추천합니다.
             </p>
           </div>
 
@@ -716,7 +654,6 @@ export default function FindTeammate() {
                       rec={rec}
                       rank={`${i+1}위`}
                       tab={tab}
-                      myDomains={meDomains}
                       onOpen={setDetail}
                     />
                   ))}
