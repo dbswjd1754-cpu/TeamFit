@@ -546,7 +546,6 @@ function RecommendCard({ rec, rank, teamMembers, tab }) {
   const { user, scores } = rec;
   const type   = TYPES[user.dominantType];
   const score  = rec.score ?? scores?.total ?? 0;
-  const barClr = srScoreBarColor(score);
   const TCOLS  = { A:'#EF4444', B:'#10B981', C:'#8B5CF6', D:'#F59E0B' };
   const tColor = TCOLS[user.dominantType] || '#CBD5E1';
   const bd     = rec.breakdown ?? null;
@@ -615,13 +614,15 @@ function RecommendCard({ rec, rank, teamMembers, tab }) {
               </div>
             )}
 
-            {/* 메인 점수 Progress Bar — 점수 수준 색상 */}
+            {/* 최종 매칭 적합도 — AI 추천 탭과 동일한 브랜드 그라데이션으로 아래 세부 지표(성향 유사도 등)와 색상 구분 */}
             <div className="flex items-center gap-2 mb-2.5">
+              <span className="text-[10px] font-bold text-gray-600 flex-shrink-0">매칭 적합도</span>
               <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
                 <div className="h-full rounded-full transition-all duration-700"
-                  style={{ width:`${score}%`, backgroundColor: barClr }}/>
+                  style={{ width:`${score}%`, background:'linear-gradient(90deg,#10B981,#3B82F6)' }}/>
               </div>
-              <span className="text-xs font-black flex-shrink-0" style={{ color: barClr }}>
+              <span className="text-xs font-black flex-shrink-0"
+                style={{ background:'linear-gradient(135deg,#10B981,#3B82F6)', WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent' }}>
                 {score}%
               </span>
             </div>

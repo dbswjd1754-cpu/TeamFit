@@ -13,7 +13,7 @@ import useUserStore  from '../store/useUserStore';
 import { TYPES }     from '../data/questions';
 import { buildPersona, getAllPersonas, getPersonaRatio } from '../utils/persona';
 import { buildTabRecommendations as _btr } from '../utils/balanceScoring';
-import { calcTeamDistribution, calcTeamBalanceScore, getTeamScoreLabel } from '../utils/balanceScoring';
+import { sumRatios, calcTeamBalanceScore, getTeamScoreLabel } from '../utils/balanceScoring';
 import {
   NewTeamPuzzle, FillTeamPuzzle, TeamBalancePuzzle,
 } from '../components/ui/PuzzleCharacters';
@@ -36,8 +36,8 @@ const COMPLEMENT = {
   D: '방향 점검 없이 달리다 보면 수정 비용이 커질 수 있어요. 주기적인 방향 확인을 추천드려요.',
 };
 
-/* ── MiniDonut: 홈 탭 그룹 밸런스용 소형 도넛 ── */
-function MiniDonut({ distribution, total, score, color }) {
+/* ── MiniDonut: 홈 탭 그룹 밸런스용 소형 도넛 — 팀원 평균 typeRatio(%) 기반 ── */
+function MiniDonut({ ratioPct, score, color }) {
   const [animated, setAnimated] = useState(false);
   useEffect(() => { const t = setTimeout(()=>setAnimated(true),120); return ()=>clearTimeout(t); },[]);
   const KEYS = ['A','B','C','D'];
@@ -45,7 +45,7 @@ function MiniDonut({ distribution, total, score, color }) {
   const SIZE=80, STROKE=12, R=(SIZE-STROKE)/2, CIRC=2*Math.PI*R;
   let offset=0;
   const segs = KEYS.map(k=>{
-    const pct = total > 0 ? (distribution[k]||0)/total : 0;
+    const pct = (ratioPct[k]||0)/100;
     const len = animated ? pct*CIRC : 0;
     const seg = { k, offset:CIRC-offset, len, color:COLS[k] };
     offset += pct*CIRC;
@@ -435,7 +435,13 @@ export default function GroupHome() {
       }),
     [members, groupCode]
   );
-  const distribution   = useMemo(() => calcTeamDistribution(scoringMembers), [scoringMembers]);
+  // ★ 그룹 전체 밸런스 카드 — 대표 Persona 인원수가 아니라 전 팀원의 typeRatio 평균으로 계산
+  //   (calcTeamBalanceScore 등 서비스 전체가 쓰는 sumRatios와 동일한 소스 — 계산 방식 일관성 유지)
+  const avgRatioPct = useMemo(() => {
+    const sum   = sumRatios(scoringMembers);
+    const total = ['A','B','C','D'].reduce((s,k) => s+sum[k], 0) || 1;
+    return Object.fromEntries(['A','B','C','D'].map(k => [k, Math.round((sum[k]/total)*100)]));
+  }, [scoringMembers]);
   const balanceScore   = useMemo(() => calcTeamBalanceScore(scoringMembers),  [scoringMembers]);
   const scoreLabel     = useMemo(() => getTeamScoreLabel(balanceScore),        [balanceScore]);
   const currentMember  = useMemo(() => getCurrentMember(),                     [members]);
@@ -609,7 +615,7 @@ export default function GroupHome() {
                   <span className="text-[10px] text-gray-400">참고용 · 팀 아님</span>
                 </div>
                 <div className="flex items-center gap-4">
-                  <MiniDonut distribution={distribution} total={members.length}
+                  <MiniDonut ratioPct={avgRatioPct}
                     score={balanceScore} color={scoreLabel.color}/>
                   <div className="flex-1 space-y-1.5">
                     {['A','B','C','D'].map(k => (
@@ -619,12 +625,12 @@ export default function GroupHome() {
                         </span>
                         <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
                           <div className="h-full rounded-full" style={{
-                            width: members.length>0?`${((distribution[k]||0)/members.length)*100}%`:'0%',
+                            width: `${avgRatioPct[k]||0}%`,
                             backgroundColor: TYPES[k].color,
                           }}/>
                         </div>
-                        <span className="text-[10px] font-bold text-gray-500 w-4 text-right">
-                          {distribution[k]||0}
+                        <span className="text-[10px] font-bold text-gray-500 w-7 text-right">
+                          {avgRatioPct[k]||0}%
                         </span>
                       </div>
                     ))}
