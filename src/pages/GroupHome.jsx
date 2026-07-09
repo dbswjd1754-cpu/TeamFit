@@ -501,10 +501,18 @@ export default function GroupHome() {
       {/* 상단 헤더 */}
       <div className="max-w-md mx-auto px-5 pt-6 pb-3">
         <div className="flex items-center justify-between">
-          <div>
-            <p className="text-xs text-gray-400">
-              안녕하세요, <span className="font-semibold text-gray-700">{currentName}</span>님 👋
-            </p>
+          <div className="flex items-center gap-2.5">
+            <button onClick={() => navigate('/')}
+              className="text-gray-400 hover:text-gray-700 transition-colors p-1 -ml-1 flex-shrink-0"
+              aria-label="시작 화면으로">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                <path d="M15 18L9 12L15 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </button>
+            <div>
+              <p className="text-xs text-gray-400">
+                안녕하세요, <span className="font-semibold text-gray-700">{currentName}</span>님 👋
+              </p>
             {currentPersona && (
               <div className="flex items-center gap-1 mt-0.5">
                 <span className="text-sm">{currentPersona.emoji}</span>
@@ -512,6 +520,7 @@ export default function GroupHome() {
                 <span className="text-xs text-gray-400">로 분석됐어요</span>
               </div>
             )}
+            </div>
           </div>
           <div className="flex items-center gap-1.5 bg-white/80 border border-gray-100
             px-3 py-1.5 rounded-full shadow-sm">

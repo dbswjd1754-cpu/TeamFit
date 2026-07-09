@@ -4,7 +4,6 @@
  * ② 도넛 그래프 + 성향 분포
  * ③ AI 분석
  * ④ 부족한 성향 추천
- * ⑤ 예상 개선 효과
  */
 import { useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -18,8 +17,6 @@ import {
   calcLackingTypes,
   calcIdealRatio,
   sumRatios,
-  calcExpectedScore,
-  generateSupplementAIText,
   buildTabRecommendations,
   makeTeamProfile,
   getTeamScoreLabel,
@@ -197,17 +194,24 @@ function MatchDetailSheet({ rec, onClose, teamMembers }) {
   const userDomains  = user.domains || [];
   const commonDomains = userDomains.filter(d => teamDomains.includes(d));
 
-  // ── Team Contribution Score (리스트 AI탭과 동일 공식) ─────
+  // ── Team Contribution Score — 리스트와 항상 같은 숫자 ─────
+  //    (탭마다 가중치가 다르므로 재계산하지 않고 리스트 점수를 그대로 사용)
   const balanceImp = bd?.balanceImp ?? 0;
   const domainPct  = bd?.domainPct  ?? 0;
   const styleSim   = bd?.styleSim   ?? 0;
   const prioPct_bd = bd?.prioPct ?? bd?.prioRate ?? 0;
-  // ★ styleSim×0.40 + domainPct×0.30 + prioPct×0.20 + balanceImp×0.10
-  const teamScore  = Math.round(
-    styleSim   * 0.40 +
-    domainPct  * 0.30 +
-    prioPct_bd * 0.20 +
-    balanceImp * 0.10
+  const weights    = bd?.weights ?? { style:0.40, domain:0.30, priority:0.20, balance:0.10 };
+  const contributions = bd?.contributions ?? {
+    style:    Math.round(styleSim   * weights.style),
+    domain:   Math.round(domainPct  * weights.domain),
+    priority: Math.round(prioPct_bd * weights.priority),
+    balance:  Math.round(balanceImp * weights.balance),
+  };
+  const teamScore  = recScore ?? Math.round(
+    styleSim   * weights.style +
+    domainPct  * weights.domain +
+    prioPct_bd * weights.priority +
+    balanceImp * weights.balance
   );
   const teamLabel  = getMatchLabel(teamScore);
 
@@ -215,18 +219,8 @@ function MatchDetailSheet({ rec, onClose, teamMembers }) {
   const candidateLeastPct = leastKey ? Math.round(user.typeRatio?.[leastKey] || 0) : 0;
   const teamLeastPct      = leastKey ? (ratioBefore[leastKey] || 0) : 0;
 
-  // ── AI 추천 이유 ──────────────────────────
-  const AI_REASONS = {
-    A: ['부족한 추진형 역할 보완', '성향 균형 개선', '빠른 의사결정력 강화'],
-    B: ['소통형 역할 보완', '협업 분위기 개선', '팀 내 조율 역할 강화'],
-    C: ['탐구형 역할 보완', '분석·검토 역량 강화', '의사결정 근거 품질 향상'],
-    D: ['실행형 역할 보완', '역할 다양성 증가', '실행 속도 향상'],
-  };
-  const reasons = [
-    ...(AI_REASONS[leastKey] || ['팀 밸런스 개선']),
-    commonDomains.length >= 3 ? '프로젝트 도메인 적합' : null,
-    styleSim >= 50 ? '협업 다양성 증가' : null,
-  ].filter(Boolean).slice(0, 4);
+  // ── AI 추천 이유 — 리스트 카드와 동일한 후보 개인별 근거를 그대로 사용 ──
+  const reasons = (rec.aiSummary || '').split(' + ').filter(Boolean).slice(0, 4);
 
   return (
     <>
@@ -290,9 +284,10 @@ function MatchDetailSheet({ rec, onClose, teamMembers }) {
 
           {/* ② 예상 Team Balance 변화 */}
           <div className="bg-gray-50 rounded-2xl p-4 mb-4">
-            <p className="text-[11px] font-black text-gray-400 uppercase tracking-widest mb-3">
+            <p className="text-[11px] font-black text-gray-400 uppercase tracking-widest mb-0.5">
               예상 Team Balance 변화
             </p>
+            <p className="text-[10px] text-gray-400 mb-3">AI가 계산하는 종합 점수 기준</p>
             <div className="flex items-center justify-center gap-3 mb-3">
               <div className="text-center">
                 <p className="text-2xl font-black" style={{ color: beforeLabel.color }}>{balanceBefore}점</p>
@@ -332,11 +327,9 @@ function MatchDetailSheet({ rec, onClose, teamMembers }) {
                       <div className="h-full rounded-full" style={{width:`${(it.after/it.max)*100}%`,backgroundColor:it.color}}/>
                     </div>
                     <span className="text-[10px] text-gray-500 w-6 text-right">{it.after}</span>
-                    {diff !== 0 && (
-                      <span className={`text-[9px] font-bold w-6 ${diff>0?'text-emerald-500':'text-gray-400'}`}>
-                        {diff>0?'+':''}{diff}
-                      </span>
-                    )}
+                    <span className="text-[9px] font-bold w-6 text-emerald-500">
+                      {diff > 0 ? `+${diff}` : ''}
+                    </span>
                   </div>
                 );
               })}
@@ -350,12 +343,12 @@ function MatchDetailSheet({ rec, onClose, teamMembers }) {
             </p>
             <div className="space-y-2.5">
 
-              {/* ① 성향 유사도 40% */}
+              {/* ① 성향 유사도 — 현재 탭 가중치 적용 */}
               <div className="bg-gray-50 rounded-2xl p-3">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-xs font-black text-gray-700">성향 유사도</span>
                   <span className="text-sm font-black" style={{color:'#4F6EF7'}}>
-                    {Math.round(styleSim * 0.40)}점
+                    {contributions.style}점
                   </span>
                 </div>
                 <div className="space-y-1 text-[10px] text-gray-500">
@@ -364,18 +357,18 @@ function MatchDetailSheet({ rec, onClose, teamMembers }) {
                     <span className="font-bold">{styleSim}%</span>
                   </div>
                   <div className="flex justify-between border-t border-gray-200 pt-1 mt-1">
-                    <span>가중치 적용 (40%)</span>
-                    <span className="font-black" style={{color:'#4F6EF7'}}>{Math.round(styleSim * 0.40)}점</span>
+                    <span>가중치 적용 ({Math.round(weights.style*100)}%)</span>
+                    <span className="font-black" style={{color:'#4F6EF7'}}>{contributions.style}점</span>
                   </div>
                 </div>
               </div>
 
-              {/* ② 관심 도메인 30% */}
+              {/* ② 관심 도메인 — 현재 탭 가중치 적용 */}
               <div className="bg-gray-50 rounded-2xl p-3">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-xs font-black text-gray-700">관심 도메인</span>
                   <span className="text-sm font-black" style={{color:'#10B981'}}>
-                    {Math.round(domainPct * 0.30)}점
+                    {contributions.domain}점
                   </span>
                 </div>
                 <div className="space-y-1 text-[10px] text-gray-500">
@@ -391,18 +384,18 @@ function MatchDetailSheet({ rec, onClose, teamMembers }) {
                     </div>
                   )}
                   <div className="flex justify-between border-t border-gray-200 pt-1 mt-1">
-                    <span>가중치 적용 (30%)</span>
-                    <span className="font-black" style={{color:'#10B981'}}>{Math.round(domainPct * 0.30)}점</span>
+                    <span>가중치 적용 ({Math.round(weights.domain*100)}%)</span>
+                    <span className="font-black" style={{color:'#10B981'}}>{contributions.domain}점</span>
                   </div>
                 </div>
               </div>
 
-              {/* ③ 팀 선호 스타일 20% */}
+              {/* ③ 팀 선호 스타일 — 현재 탭 가중치 적용 */}
               <div className="bg-gray-50 rounded-2xl p-3">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-xs font-black text-gray-700">팀 선호 스타일</span>
                   <span className="text-sm font-black" style={{color:'#8B5CF6'}}>
-                    {Math.round(prioPct_bd * 0.20)}점
+                    {contributions.priority}점
                   </span>
                 </div>
                 <div className="space-y-1 text-[10px] text-gray-500">
@@ -411,18 +404,18 @@ function MatchDetailSheet({ rec, onClose, teamMembers }) {
                     <span className="font-bold">{prioPct_bd}%</span>
                   </div>
                   <div className="flex justify-between border-t border-gray-200 pt-1 mt-1">
-                    <span>가중치 적용 (20%)</span>
-                    <span className="font-black" style={{color:'#8B5CF6'}}>{Math.round(prioPct_bd * 0.20)}점</span>
+                    <span>가중치 적용 ({Math.round(weights.priority*100)}%)</span>
+                    <span className="font-black" style={{color:'#8B5CF6'}}>{contributions.priority}점</span>
                   </div>
                 </div>
               </div>
 
-              {/* ④ 팀 밸런스 개선도 10% */}
+              {/* ④ 팀 밸런스 개선도 — 현재 탭 가중치 적용 */}
               <div className="bg-gray-50 rounded-2xl p-3">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-xs font-black text-gray-700">팀 밸런스</span>
                   <span className="text-sm font-black" style={{color:'#F59E0B'}}>
-                    {Math.round(balanceImp * 0.10)}점
+                    {contributions.balance}점
                   </span>
                 </div>
                 <div className="space-y-1 text-[10px] text-gray-500">
@@ -433,8 +426,8 @@ function MatchDetailSheet({ rec, onClose, teamMembers }) {
                     </div>
                   )}
                   <div className="flex justify-between border-t border-gray-200 pt-1 mt-1">
-                    <span>가중치 적용 (10%)</span>
-                    <span className="font-black" style={{color:'#F59E0B'}}>{Math.round(balanceImp * 0.10)}점</span>
+                    <span>가중치 적용 ({Math.round(weights.balance*100)}%)</span>
+                    <span className="font-black" style={{color:'#F59E0B'}}>{contributions.balance}점</span>
                   </div>
                 </div>
               </div>
@@ -451,9 +444,10 @@ function MatchDetailSheet({ rec, onClose, teamMembers }) {
 
           {/* ④ 성향 분포 변화 (calcLackingTypes와 동일 소스) */}
           <div className="mb-4">
-            <p className="text-[11px] font-black text-gray-400 uppercase tracking-widest mb-2">
+            <p className="text-[11px] font-black text-gray-400 uppercase tracking-widest mb-0.5">
               성향 분포 변화
             </p>
+            <p className="text-[10px] text-gray-400 mb-2">실제 성향 비율 기준</p>
             <div className="bg-gray-50 rounded-2xl p-3">
               <div className="grid grid-cols-2 gap-x-4 gap-y-2.5">
                 {KEYS.map(k => {
@@ -473,13 +467,20 @@ function MatchDetailSheet({ rec, onClose, teamMembers }) {
                           )}
                         </div>
                         <div className="flex items-center gap-1">
-                          <span className="text-[10px] text-gray-400">{bef}%</span>
-                          <span className="text-[9px] text-gray-300">→</span>
-                          <span className="text-[11px] font-black" style={{ color: TCOLS[k] }}>{aft}%</span>
-                          {diff !== 0 && (
-                            <span className={`text-[9px] font-bold ${diff>0?'text-emerald-500':'text-gray-400'}`}>
-                              {diff>0?`+${diff}`:diff}
-                            </span>
+                          {diff === 0 ? (
+                            <>
+                              <span className="text-[11px] font-black text-gray-400">{aft}%</span>
+                              <span className="text-[9px] text-gray-300">· 변화 없음</span>
+                            </>
+                          ) : (
+                            <>
+                              <span className="text-[10px] text-gray-400">{bef}%</span>
+                              <span className="text-[9px] text-gray-300">→</span>
+                              <span className="text-[11px] font-black" style={{ color: TCOLS[k] }}>{aft}%</span>
+                              {diff > 0 && (
+                                <span className="text-[9px] font-bold text-emerald-500">+{diff}</span>
+                              )}
+                            </>
                           )}
                         </div>
                       </div>
@@ -772,9 +773,8 @@ function RecommendSection({ teamMembers, groupCode, distribution }) {
   const leastKeyR  = lackedR[0];
   const lackingOrder = lackedR; // ★ lackingOrder = 부족 성향 배열 (부족도 내림차순)
 
-  // ★ AI 탭: 팀 부족 성향 보완 기준으로 정렬
-  //   - balanceImp 60% + domainMatch 20% + styleSim 20%
-  //   - 부족 성향(leastKeyR) 보유자 상위 배치
+  // ★ AI 탭: 종합 점수(styleSim×0.40 + domainPct×0.30 + prioPct×0.20 + balanceImp×0.10) 순으로 정렬
+  //   — 리스트 순위와 점수가 항상 일치하도록, 부족 성향 보유 여부로 순위를 뒤집지 않음
   function buildTeamSuppRecs(cands) {
     // ★ AI 추천 전용 계산식 (설계 의도):
     //   styleSim×0.40 + domainPct×0.30 + prioPct×0.20 + balanceImp×0.10
@@ -794,15 +794,9 @@ function RecommendSection({ teamMembers, groupCode, distribution }) {
       return { ...r, score: s };
     });
 
-    // 부족 성향 보유자 우선 (동점 시 부족 성향 보유자 상위)
-    results.sort((a,b)=>{
-      const aHas=(a.user.typeRatio?.[leastKeyR]||0)>25;
-      const bHas=(b.user.typeRatio?.[leastKeyR]||0)>25;
-      if(aHas&&!bHas) return -1;
-      if(!aHas&&bHas) return 1;
-      return b.score-a.score;
-    });
-    // ★ 팀 기반 aiSummary 주입 (구체적 추천 이유)
+    // ★ 리스트에 보이는 순위 = 점수 순위 (항상 일치)
+    results.sort((a,b) => b.score - a.score);
+    // ★ 팀 기반 aiSummary 주입 (구체적 추천 이유, 최대 2개 — 상세정보에서도 동일하게 재사용됨)
     return results.map(rec => {
       const u = rec.user;
       const bd = rec.breakdown || {};
@@ -822,7 +816,7 @@ function RecommendSection({ teamMembers, groupCode, distribution }) {
         reasons.push(`협업 방향성 유사`);
       if(!hasLeast && reasons.length===0)
         reasons.push(`팀 밸런스 개선 기여`);
-      return { ...rec, aiSummary: reasons.join(' + ') };
+      return { ...rec, aiSummary: reasons.slice(0, 2).join(' + ') };
     });
   }
 
@@ -975,13 +969,6 @@ export default function SupplementResult() {
   const leastKey     = lackedSorted[0];
   const lackingFinal = lackedSorted.slice(0, want);
 
-  // ★ 예상 점수: balanceScoring.calcExpectedScore (동일 공식, max 가드)
-  const expectedScore = calcExpectedScore(teamMembers, want);
-  const expectedLabel = getTeamScoreLabel(expectedScore);
-
-  // ★ AI 분석 문구: generateSupplementAIText (현재 팀 typeRatio 기반 — mostKey와 동일 소스)
-  // ★ finalN 전달: AI 분석의 leastKey도 최종 팀 기준으로 계산
-  const aiText = generateSupplementAIText(teamMembers, balanceScore, finalN);
 
   // 등급 라벨
   const GRADE_LABEL = { S:'완벽한 밸런스', A:'균형 잡힌 팀', B:'보완이 필요한 팀', C:'성향 불균형 주의' };
@@ -1171,24 +1158,32 @@ export default function SupplementResult() {
               {/* 구분선 */}
               <div className="mx-5 border-t border-emerald-100 border-dashed mb-3"/>
 
-              {/* 약점 — 부족 성향 전체 표시 */}
+              {/* 약점 — 부족 성향 전체 표시 (없으면 이미 균형 잡힌 팀) */}
               <div className="px-5 pb-3">
                 <div className="flex items-center gap-1.5 mb-1.5">
                   <span className="text-[10px] font-black uppercase tracking-widest text-amber-600">보완 필요</span>
                 </div>
-                <div className="flex flex-wrap gap-1.5 mb-2">
-                  {lackedSorted.filter(k=>(actualRatio[k]||0)<0.25).slice(0,3).map(k=>(
-                    <span key={k} className="text-xs font-bold px-2.5 py-1 rounded-full border"
-                      style={{ color:TYPES[k].color, backgroundColor:TYPES[k].bg, borderColor:`${TYPES[k].color}30` }}>
-                      {TYPES[k].emoji} {TYPES[k].name} {Math.round((actualRatio[k]||0)*100)}%
-                    </span>
-                  ))}
-                </div>
-                <p className="text-xs text-gray-600 leading-relaxed">
-                  {lackedSorted.filter(k=>(actualRatio[k]||0)<0.25).length >= 2
-                    ? `현재 팀은 ${lackedSorted.filter(k=>(actualRatio[k]||0)<0.25).slice(0,2).map(k=>TYPES[k].name).join('과 ')} 비율이 동일하게 부족합니다. 두 성향을 함께 보완할 수 있는 팀원을 우선 추천합니다.`
-                    : LACK_DESC[leastKey]}
-                </p>
+                {leastKey ? (
+                  <>
+                    <div className="flex flex-wrap gap-1.5 mb-2">
+                      {lackedSorted.filter(k=>(actualRatio[k]||0)<0.25).slice(0,3).map(k=>(
+                        <span key={k} className="text-xs font-bold px-2.5 py-1 rounded-full border"
+                          style={{ color:TYPES[k].color, backgroundColor:TYPES[k].bg, borderColor:`${TYPES[k].color}30` }}>
+                          {TYPES[k].emoji} {TYPES[k].name} {Math.round((actualRatio[k]||0)*100)}%
+                        </span>
+                      ))}
+                    </div>
+                    <p className="text-xs text-gray-600 leading-relaxed">
+                      {lackedSorted.filter(k=>(actualRatio[k]||0)<0.25).length >= 2
+                        ? `현재 팀은 ${lackedSorted.filter(k=>(actualRatio[k]||0)<0.25).slice(0,2).map(k=>TYPES[k].name).join('과 ')} 비율이 동일하게 부족합니다. 두 성향을 함께 보완할 수 있는 팀원을 우선 추천합니다.`
+                        : LACK_DESC[leastKey]}
+                    </p>
+                  </>
+                ) : (
+                  <p className="text-xs text-gray-600 leading-relaxed">
+                    현재 팀은 네 가지 성향이 균형 있게 분포되어 있어 특별히 부족한 성향이 없습니다.
+                  </p>
+                )}
               </div>
 
               {/* 구분선 */}
@@ -1200,9 +1195,15 @@ export default function SupplementResult() {
                   <span className="text-[10px] font-black uppercase tracking-widest text-blue-600">AI 추천 이유</span>
                 </div>
                 <p className="text-xs text-gray-600 leading-relaxed">
-                  AI는 팀 성향 균형도·역할 다양성·협업 스타일을 종합 분석하여,
-                  현재 {leastPct}%에 불과한 <span className="font-bold" style={{color:COLS[leastKey]}}>{TYPES[leastKey].name}</span>을
-                  보완할 팀원을 우선 추천합니다.
+                  {leastKey ? (
+                    <>
+                      AI는 팀 성향 균형도·역할 다양성·협업 스타일을 종합 분석하여,
+                      현재 {leastPct}%에 불과한 <span className="font-bold" style={{color:COLS[leastKey]}}>{TYPES[leastKey].name}</span>을
+                      보완할 팀원을 우선 추천합니다.
+                    </>
+                  ) : (
+                    '이미 균형 잡힌 팀이므로, 협업 스타일·관심 도메인이 잘 맞는 팀원을 우선 추천합니다.'
+                  )}
                 </p>
               </div>
             </div>
@@ -1220,6 +1221,12 @@ export default function SupplementResult() {
 
 
 
+          {lackingFinal.length === 0 && (
+            <p className="text-xs text-gray-500 leading-relaxed bg-gray-50 rounded-2xl p-4">
+              현재 팀은 균형이 잘 잡혀 있어 특별히 보완이 필요한 성향이 없어요.
+              협업 스타일이나 관심 도메인이 잘 맞는 팀원을 찾아보세요.
+            </p>
+          )}
           <div className="space-y-3">
             {lackingFinal.map((k, i) => {
               const t   = TYPES[k];
@@ -1271,13 +1278,6 @@ export default function SupplementResult() {
           groupCode={groupCode}
           distribution={distribution}
         />
-
-                {/* 추천 알고리즘 설명 */}
-        {(() => {
-          const [algoOpen, setAlgoOpen] = window.__algoState || [false, null];
-          // React state 대신 간단히 렌더 시점마다 DOM 상태로 처리
-          return null; // 알고리즘 설명은 추천 성향 섹션에 통합
-        })()}
 
         {/* CTA */}
         <button onClick={() => navigate('/group-home')}
