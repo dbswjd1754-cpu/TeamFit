@@ -15,11 +15,11 @@ import { useNavigate, useLocation } from 'react-router-dom';
  * 80~100% : 퍼즐 홈(소켓)과 돌기가 정확히 맞물리는 위치까지 이동
  * done    : 완전히 맞물린 상태로 고정 + 짧은 scale pulse·반짝임
  *
- * SEP(0)  = 평소보다 떨어진 기준 위치 (각 조각 18px씩 바깥쪽)
- * LOCK(1) = 실제로 소켓·돌기가 겹치는 맞물림 위치 (각 조각 20px씩 안쪽 — 실측 확인값)
+ * SEP(0)  = 평소보다 떨어진 기준 위치 (각 조각 바깥쪽으로)
+ * LOCK(1) = 실제로 소켓·돌기가 겹치는 맞물림 위치 (각 조각 안쪽으로 — 로고 캐릭터 아이콘 크기에 맞게 실측)
  */
-const SEP  = 18;
-const LOCK = 20;
+const SEP  = 14;
+const LOCK = 5.5;
 const BOUNCE_AMPLITUDE = 3;
 
 const easeInOutCubic = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
@@ -80,36 +80,10 @@ function PuzzleAnimation({ progress, done }) {
         style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}
       >
         <div ref={leftRef} style={{ transform: `translateX(${-SEP}px)` }}>
-          <svg width="64" height="64" viewBox="0 0 66 66" fill="none">
-            <rect x="4" y="14" width="44" height="44" rx="10" fill="#7DCFB6"/>
-            <ellipse cx="26" cy="11" rx="8" ry="7" fill="#7DCFB6"/>
-            <ellipse cx="48" cy="36" rx="7" ry="8" fill="#ECFDF5"/>
-            <ellipse cx="26" cy="59" rx="8" ry="7" fill="#7DCFB6"/>
-            <rect x="9" y="19" width="34" height="34" rx="8" fill="#8ED8C4" opacity="0.35"/>
-            <ellipse cx="19" cy="34" rx="3.2" ry="3.6" fill="#2D6A5A"/>
-            <ellipse cx="18" cy="33" rx="1" ry="1" fill="white" opacity="0.9"/>
-            <ellipse cx="35" cy="34" rx="3.2" ry="3.6" fill="#2D6A5A"/>
-            <ellipse cx="34" cy="33" rx="1" ry="1" fill="white" opacity="0.9"/>
-            <path d="M21 42 Q27 48 33 42" stroke="#2D6A5A" strokeWidth="2" strokeLinecap="round" fill="none"/>
-            <ellipse cx="14" cy="40" rx="3" ry="2" fill="#F9A8D4" opacity="0.55"/>
-            <ellipse cx="40" cy="40" rx="3" ry="2" fill="#F9A8D4" opacity="0.55"/>
-          </svg>
+          <img src="/puzzle-icon-left-20260709.png" alt="" style={{ height: 72, width: 'auto', display: 'block' }} />
         </div>
         <div ref={rightRef} style={{ transform: `translateX(${SEP}px)` }}>
-          <svg width="64" height="64" viewBox="0 0 66 66" fill="none">
-            <rect x="18" y="14" width="44" height="44" rx="10" fill="#93C5FD"/>
-            <ellipse cx="18" cy="36" rx="7" ry="8" fill="#93C5FD"/>
-            <ellipse cx="40" cy="11" rx="8" ry="7" fill="#EFF6FF"/>
-            <ellipse cx="40" cy="59" rx="8" ry="7" fill="#93C5FD"/>
-            <rect x="23" y="19" width="34" height="34" rx="8" fill="#BAD9FC" opacity="0.35"/>
-            <ellipse cx="31" cy="34" rx="3.2" ry="3.6" fill="#1E3A8A"/>
-            <ellipse cx="30" cy="33" rx="1" ry="1" fill="white" opacity="0.9"/>
-            <ellipse cx="47" cy="34" rx="3.2" ry="3.6" fill="#1E3A8A"/>
-            <ellipse cx="46" cy="33" rx="1" ry="1" fill="white" opacity="0.9"/>
-            <path d="M33 42 Q39 48 45 42" stroke="#1E3A8A" strokeWidth="2" strokeLinecap="round" fill="none"/>
-            <ellipse cx="26" cy="40" rx="3" ry="2" fill="#F9A8D4" opacity="0.55"/>
-            <ellipse cx="52" cy="40" rx="3" ry="2" fill="#F9A8D4" opacity="0.55"/>
-          </svg>
+          <img src="/puzzle-icon-right-20260709.png" alt="" style={{ height: 68, width: 'auto', display: 'block' }} />
         </div>
         {done && (
           <>
