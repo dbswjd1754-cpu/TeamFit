@@ -60,18 +60,19 @@ function DonutChart({ actualRatio, score, color }) {
   );
 }
 
-/* ── 도메인 분포 막대 ── */
-function DomainBar({ domain, pct, maxPct }) {
+/* ── 도메인 분포 막대 — 선택 인원 수 / 전체 팀원 수 기준 ── */
+function DomainBar({ domain, count, total }) {
+  const ratio = total > 0 ? (count/total)*100 : 0;
   const [w, setW] = useState(0);
-  useEffect(() => { const t = setTimeout(() => setW(pct), 300); return () => clearTimeout(t); }, [pct]);
+  useEffect(() => { const t = setTimeout(() => setW(ratio), 300); return () => clearTimeout(t); }, [ratio]);
   return (
     <div className="flex items-center gap-2">
       <span className="text-[10px] text-gray-600 w-24 flex-shrink-0 truncate">{domain}</span>
       <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
         <div className="h-full rounded-full transition-all duration-700"
-          style={{ width:`${(w/maxPct)*100}%`, backgroundColor:'#8B5CF6' }}/>
+          style={{ width:`${w}%`, backgroundColor:'#8B5CF6' }}/>
       </div>
-      <span className="text-[10px] font-bold text-gray-500 w-7 text-right">{pct}%</span>
+      <span className="text-[10px] font-bold text-gray-500 w-14 text-right flex-shrink-0">{count}명 / {total}명</span>
     </div>
   );
 }
@@ -112,15 +113,15 @@ export default function BalanceResult() {
   const actualRatio = Object.fromEntries(KEYS.map(k => [k, _rsum[k]/_rtot]));
   const pctRatio    = Object.fromEntries(KEYS.map(k => [k, Math.round((actualRatio[k]||0)*100)]));
 
-  /* ── 도메인 분포 ── */
+  /* ── 도메인 분포 — 전체 팀원 중 몇 명이 선택했는지 기준 (중복 선택 가능하므로 %가 아닌 명수) ── */
   const domainCount = {};
   teamMembers.forEach(m => (m.domains||[]).forEach(d => { domainCount[d] = (domainCount[d]||0)+1; }));
-  const totalDomainSlots = teamMembers.reduce((s,m)=>s+(m.domains?.length||0),0) || 1;
+  const totalMembers = teamMembers.length || 1;
   const domainList = Object.entries(domainCount)
-    .map(([d,cnt]) => ({ domain:d, pct: Math.round((cnt/totalDomainSlots)*100) }))
-    .sort((a,b) => b.pct-a.pct);
+    .map(([d,cnt]) => ({ domain:d, count:cnt, total:totalMembers }))
+    .sort((a,b) => b.count-a.count);
   const topDomain  = domainList[0];
-  const isDomainDiverse = domainList.length >= 4 || (domainList.length>1 && topDomain?.pct < 40);
+  const isDomainDiverse = domainList.length >= 4 || (domainList.length>1 && topDomain && (topDomain.count/totalMembers) < 0.4);
 
   /* ── 부족 성향 근거 ── */
   const IDEAL_PCT = 25; // 항상 25% 기준
@@ -161,7 +162,7 @@ export default function BalanceResult() {
   if (isDomainDiverse) {
     aiLines.push(`관심 도메인이 다양하게 분포되어 있어 프로젝트 초기 주제 합의 과정이 필요할 수 있습니다.`);
   } else if (topDomain) {
-    aiLines.push(`${topDomain.domain} 관심도(${topDomain.pct}%)가 가장 높아 프로젝트 방향성이 비교적 명확합니다.`);
+    aiLines.push(`${topDomain.domain} 관심도(${topDomain.count}/${totalMembers}명)가 가장 높아 프로젝트 방향성이 비교적 명확합니다.`);
   }
 
   /* ── 협업 리스크 ── */
@@ -322,10 +323,10 @@ export default function BalanceResult() {
         {domainList.length > 0 && (
           <div className="bg-white rounded-3xl p-5 shadow-sm border border-gray-50">
             <p className="text-sm font-black text-gray-900 mb-1">🗂️ 도메인 분포</p>
-            <p className="text-xs text-gray-400 mb-4">팀원 전체 관심 도메인 기준</p>
+            <p className="text-xs text-gray-400 mb-4">전체 팀원 중 선택한 인원 수 기준</p>
             <div className="space-y-2.5">
-              {domainList.slice(0, 6).map(({ domain, pct }) => (
-                <DomainBar key={domain} domain={domain} pct={pct} maxPct={domainList[0].pct}/>
+              {domainList.slice(0, 6).map(({ domain, count, total }) => (
+                <DomainBar key={domain} domain={domain} count={count} total={total}/>
               ))}
             </div>
             <div className="mt-3 pt-3 border-t border-gray-100">
@@ -333,7 +334,7 @@ export default function BalanceResult() {
                 {isDomainDiverse
                   ? '관심 도메인이 다양하게 분포되어 있어 프로젝트 주제 선정 시 의견 조율이 필요할 수 있습니다.'
                   : topDomain
-                    ? `${topDomain.domain} 관심도(${topDomain.pct}%)가 가장 높아 프로젝트 방향성이 비교적 명확합니다.`
+                    ? `${topDomain.domain} 관심도(${topDomain.count}/${totalMembers}명)가 가장 높아 프로젝트 방향성이 비교적 명확합니다.`
                     : ''}
               </p>
             </div>

@@ -2,7 +2,7 @@
  * BalanceSelect — 팀 밸런스 2단계
  * total명 선택 필요
  */
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import useGroupStore from '../store/useGroupStore';
 import { TYPES }     from '../data/questions';
@@ -13,10 +13,12 @@ export default function BalanceSelect() {
   const isEntered = useGroupStore(s => s.isEntered);
   const groupCode = useGroupStore(s => s.groupCode);
   const members        = useGroupStore(s => s.members);
+  const currentName    = useGroupStore(s => s.currentName);  // ★ 현재 사용자 이름
   const refreshMembers = useGroupStore(s => s.refreshMembers);
   const [selected, setSelected] = useState([]);
   const [copied,   setCopied]   = useState(false);
   const [ready,    setReady]    = useState(false);
+  const [search,   setSearch]   = useState('');
 
   // ✅ 모든 guard를 useEffect 안으로 이동 (hooks 규칙 준수)
   useEffect(() => {
@@ -26,13 +28,45 @@ export default function BalanceSelect() {
     setReady(true);
   }, []);
 
+  // ★ 현재 사용자를 members에서 찾기 (이름 기준)
+  const myMember = useMemo(
+    () => members.find(m => m.name === currentName),
+    [members, currentName]
+  );
+
+  // ★ 마운트 후 현재 사용자 자동 선택
+  useEffect(() => {
+    if (!ready || !myMember) return;
+    setSelected(prev =>
+      prev.includes(myMember.id) ? prev : [myMember.id, ...prev]
+    );
+  }, [ready, myMember?.id]);
+
   if (!ready) return null;
+
+  // 검색 필터
+  const filteredMembers = members.filter(m => {
+    const q = search.trim().toLowerCase();
+    if (!q) return true;
+    const name     = (m.name || '').toLowerCase();
+    const p        = m.profile || {};
+    const domains  = (p.domains || []).join(' ').toLowerCase();
+    const typeName = (TYPES[p.typeKey]?.name || '').toLowerCase();
+    return name.includes(q) || domains.includes(q) || typeName.includes(q);
+  });
+  // ★ 본인(나)은 항상 리스트 맨 위에 고정
+  if (myMember) {
+    const meIdx = filteredMembers.findIndex(m => m.id === myMember.id);
+    if (meIdx > 0) filteredMembers.unshift(filteredMembers.splice(meIdx, 1)[0]);
+  }
 
   const { total } = state;
   const count = selected.length;
   const canNext = count === total;
 
   const toggle = (id) => {
+    // ★ 현재 사용자는 해제 불가
+    if (myMember && id === myMember.id) return;
     setSelected(prev =>
       prev.includes(id) ? prev.filter(x => x !== id)
         : prev.length < total ? [...prev, id] : prev
@@ -70,7 +104,30 @@ export default function BalanceSelect() {
       </div>
 
       {/* 멤버 목록 */}
-      <div className="flex-1 overflow-y-auto px-5 pb-2 max-w-md mx-auto w-full">
+      <div className="px-5 pb-2 max-w-md mx-auto w-full flex-shrink-0">
+        {/* 검색창 */}
+        <div className="relative mb-3">
+          <svg className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-300"
+            width="14" height="14" viewBox="0 0 24 24" fill="none">
+            <circle cx="11" cy="11" r="7" stroke="currentColor" strokeWidth="2"/>
+            <path d="M16.5 16.5L21 21" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+          </svg>
+          <input type="text" value={search} onChange={e => setSearch(e.target.value)}
+            placeholder="이름, 도메인, 성향 검색"
+            className="w-full pl-9 pr-9 py-2.5 rounded-xl bg-white border border-gray-200
+              text-sm text-gray-700 placeholder-gray-300 focus:outline-none
+              focus:border-purple-300 transition-colors shadow-sm"/>
+          {search && (
+            <button onClick={() => setSearch('')}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-300 hover:text-gray-500">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+              </svg>
+            </button>
+          )}
+        </div>
+
+        <div className="overflow-y-auto" style={{maxHeight:'calc(100vh - 360px)', minHeight:'120px'}}>
         {members.length === 0 ? (
           <div className="flex flex-col items-center py-12 text-center">
             <div className="text-4xl mb-3">👥</div>
@@ -87,14 +144,18 @@ export default function BalanceSelect() {
           </div>
         ) : (
           <div className="space-y-2.5 py-1">
-            {members.map(m => {
+            {filteredMembers.length === 0 && search ? (
+              <p className="text-center text-xs text-gray-400 py-8">"{search}"와 일치하는 멤버가 없어요.</p>
+            ) : filteredMembers.map(m => {
+              const isMe  = myMember && m.id === myMember.id;  // ★ 현재 사용자 여부
               const isSel = selected.includes(m.id);
-              const isDis = !isSel && count >= total;
-              const type  = TYPES[m.dominantType];
+              const isDis = !isSel && !isMe && count >= total;  // ★ 본인은 항상 선택 가능
+              const type  = TYPES[m.profile?.typeKey];
               return (
                 <button key={m.id} onClick={() => toggle(m.id)} disabled={isDis}
                   className={`w-full flex items-center gap-3 p-4 rounded-2xl border-2 text-left transition-all active:scale-[0.99] ${
-                    isSel ? 'border-purple-400 bg-purple-50'
+                    isMe   ? 'border-purple-400 bg-purple-50 cursor-default'  // ★ 본인: 고정
+                    : isSel ? 'border-purple-400 bg-purple-50'
                     : isDis ? 'border-gray-100 bg-gray-50 opacity-40 cursor-not-allowed'
                     : 'border-gray-100 bg-white hover:border-gray-200 hover:shadow-sm'}`}>
                   <div className={`w-6 h-6 rounded-full border-2 flex-shrink-0 flex items-center justify-center transition-all ${isSel ? 'border-purple-400 bg-purple-400' : 'border-gray-200'}`}>
@@ -103,17 +164,28 @@ export default function BalanceSelect() {
                   <div className="w-10 h-10 rounded-xl flex items-center justify-center text-base font-black text-white flex-shrink-0"
                     style={{ backgroundColor: isSel ? '#8B5CF6' : '#CBD5E1' }}>{m.name[0]}</div>
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-0.5">
+                    <div className="flex items-center gap-2 mb-0.5 flex-wrap">
                       <p className={`font-bold text-sm ${isSel ? 'text-purple-800' : 'text-gray-900'}`}>{m.name}</p>
+                      {/* ★ 나 배지 */}
+                      {isMe && (
+                        <span className="text-[10px] bg-purple-100 text-purple-600
+                          px-1.5 py-0.5 rounded-full font-bold">나</span>
+                      )}
                       {type && <span className="text-[10px] px-1.5 py-0.5 rounded-full font-semibold"
                         style={{ color: type.color, backgroundColor: type.bg }}>{type.emoji} {type.name}</span>}
                     </div>
                     <div className="flex flex-wrap gap-1">
-                      {(m.domains||[]).slice(0,2).map(d=>(
+                      {(m.profile?.domains||[]).map(d=>(
                         <span key={d} className="text-[10px] text-gray-400 bg-gray-50 px-1.5 py-0.5 rounded-full">{d}</span>
                       ))}
                     </div>
                   </div>
+                  {/* ★ 고정 텍스트 */}
+                  {isMe && (
+                    <span className="text-[10px] text-purple-500 font-semibold flex-shrink-0">
+                      고정
+                    </span>
+                  )}
                 </button>
               );
             })}
@@ -129,6 +201,7 @@ export default function BalanceSelect() {
             )}
           </div>
         )}
+        </div>
       </div>
 
       <div className="flex-shrink-0 px-5 pb-7 pt-3 max-w-md mx-auto w-full"
