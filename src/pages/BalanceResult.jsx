@@ -19,6 +19,7 @@ import {
   calcLackingTypes,
   getTeamScoreLabel,
   sumRatios,
+  withI,
 } from '../utils/balanceScoring';
 
 const KEYS  = ['A','B','C','D'];
@@ -121,7 +122,13 @@ export default function BalanceResult() {
     .map(([d,cnt]) => ({ domain:d, count:cnt, total:totalMembers }))
     .sort((a,b) => b.count-a.count);
   const topDomain  = domainList[0];
-  const isDomainDiverse = domainList.length >= 4 || (domainList.length>1 && topDomain && (topDomain.count/totalMembers) < 0.4);
+  const topDomainShare = topDomain ? topDomain.count/totalMembers : 0;
+  // ★ 문구 생성 전용 분류 — 실제 겹치는 정도(topDomainShare)를 우선 기준으로 판단
+  //   (기존에는 domainList.length>=4만으로 "다양함"을 판단해, 상위 도메인이 크게 겹쳐도
+  //    "다양하게 분포"라고 말해버리는 모순이 있었음 — 문구만 실제 분포와 맞도록 수정)
+  const isDomainConcentrated = topDomain && topDomainShare >= 0.5;              // 절반 이상이 같은 도메인
+  const isDomainDiverse      = !isDomainConcentrated
+    && domainList.length >= 4 && topDomainShare < 0.4;                          // 뚜렷한 공통 관심사 없이 널리 분산
 
   /* ── 부족 성향 근거 ── */
   const IDEAL_PCT = 25; // 항상 25% 기준
@@ -143,7 +150,7 @@ export default function BalanceResult() {
 
   // 성향 강점
   aiLines.push(
-    `현재 팀은 ${TYPES[mostKey]?.name}(${pctRatio[mostKey]}%) 비중이 높아 ${STRENGTH_LABEL[mostKey]}이 강점입니다.`
+    `현재 팀은 ${TYPES[mostKey]?.name}(${pctRatio[mostKey]}%) 비중이 높아 ${withI(STRENGTH_LABEL[mostKey])} 강점입니다.`
   );
 
   // 역할 다양성
@@ -158,9 +165,11 @@ export default function BalanceResult() {
     aiLines.push(`${TYPES[leastKey]?.name}(${pctRatio[leastKey]}%) 비율이 낮아 ${WEAK_LABEL[leastKey]} 역할이 부족합니다.`);
   }
 
-  // 도메인
-  if (isDomainDiverse) {
-    aiLines.push(`관심 도메인이 다양하게 분포되어 있어 프로젝트 초기 주제 합의 과정이 필요할 수 있습니다.`);
+  // 도메인 — 실제 겹치는 정도에 맞춰 세 갈래로 문구 생성
+  if (isDomainConcentrated) {
+    aiLines.push(`${topDomain.domain} 등 공통 관심 도메인이 많아(${topDomain.count}/${totalMembers}명) 프로젝트 주제 합의가 비교적 수월할 것으로 예상됩니다.`);
+  } else if (isDomainDiverse) {
+    aiLines.push(`다양한 관심 도메인을 보유하고 있어 여러 관점을 기대할 수 있습니다.`);
   } else if (topDomain) {
     aiLines.push(`${topDomain.domain} 관심도(${topDomain.count}/${totalMembers}명)가 가장 높아 프로젝트 방향성이 비교적 명확합니다.`);
   }
@@ -331,11 +340,13 @@ export default function BalanceResult() {
             </div>
             <div className="mt-3 pt-3 border-t border-gray-100">
               <p className="text-xs text-gray-500 leading-relaxed">
-                {isDomainDiverse
-                  ? '관심 도메인이 다양하게 분포되어 있어 프로젝트 주제 선정 시 의견 조율이 필요할 수 있습니다.'
-                  : topDomain
-                    ? `${topDomain.domain} 관심도(${topDomain.count}/${totalMembers}명)가 가장 높아 프로젝트 방향성이 비교적 명확합니다.`
-                    : ''}
+                {isDomainConcentrated
+                  ? `${topDomain.domain} 등 공통 관심 도메인이 많아(${topDomain.count}/${totalMembers}명) 프로젝트 주제 합의가 비교적 수월할 것으로 예상됩니다.`
+                  : isDomainDiverse
+                    ? '다양한 관심 도메인을 보유하고 있어 여러 관점을 기대할 수 있습니다.'
+                    : topDomain
+                      ? `${topDomain.domain} 관심도(${topDomain.count}/${totalMembers}명)가 가장 높아 프로젝트 방향성이 비교적 명확합니다.`
+                      : ''}
               </p>
             </div>
           </div>

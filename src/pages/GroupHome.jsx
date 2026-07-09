@@ -138,7 +138,7 @@ function describeMyPersona(persona, typeRatio) {
   const n2 = k2 ? TYPES[k2]?.name : null;
 
   if (persona.type === 'balanced') {
-    return `당신은 네 가지 성향이 ${n1} ${v1}%로 비슷하게 균형을 이루어 나타났습니다.`;
+    return `당신은 네 가지 성향이 비슷한 비율로 균형을 이루고 있으며, 그중 ${n1}(${v1}%)이 가장 높게 나타났습니다.`;
   }
   if (persona.type === 'dual') {
     return `당신은 ${n1} ${v1}%, ${n2} ${v2}%로 두 성향이 비슷하게 나타났습니다.`;
@@ -635,6 +635,13 @@ export default function GroupHome() {
                       </div>
                     ))}
                   </div>
+                </div>
+                {/* 등급 라벨 — 다른 결과 화면과 동일한 표현을 재사용해 숫자만으로는 알기 어려운
+                    "이 점수가 좋은 편인지"를 바로 알 수 있게 함 */}
+                <div className="flex items-center justify-between pt-3 mt-3 border-t border-gray-50">
+                  <p className="text-xs text-gray-500">전체 밸런스</p>
+                  <span className="text-sm font-black px-3 py-1 rounded-full text-white"
+                    style={{ backgroundColor: scoreLabel.color }}>{scoreLabel.label}</span>
                 </div>
               </div>
             )}

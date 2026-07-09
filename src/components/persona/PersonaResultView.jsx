@@ -7,7 +7,7 @@
  */
 import { useState, useEffect, useMemo } from 'react';
 import { TYPES } from '../../data/questions';
-import { buildTabRecommendations } from '../../utils/balanceScoring';
+import { buildTabRecommendations, withI } from '../../utils/balanceScoring';
 import { buildPersona, getAllPersonas, getPersonaRatio } from '../../utils/persona';
 
 /* ── 나의 Persona 산출 근거 설명 (실제 typeRatio 기반) ── */
@@ -19,7 +19,7 @@ function describeMyPersona(persona, typeRatio) {
   const n2 = k2 ? TYPES[k2]?.name : null;
 
   if (persona.type === 'balanced') {
-    return `당신은 네 가지 성향이 ${n1} ${v1}%로 비슷하게 균형을 이루어 나타났습니다.`;
+    return `당신은 네 가지 성향이 비슷한 비율로 균형을 이루고 있으며, 그중 ${n1}(${v1}%)이 가장 높게 나타났습니다.`;
   }
   if (persona.type === 'dual') {
     return `당신은 ${n1} ${v1}%, ${n2} ${v2}%로 두 성향이 비슷하게 나타났습니다.`;
@@ -176,8 +176,8 @@ function calcMatchedPersonas(me, myPersonaKey) {
 function genMatchReason(myPersona, matchedPersona, breakdown) {
   const myStrengths   = myPersona.strengths.slice(0, 2).join(', ');
   const theirStrengths = matchedPersona.strengths.slice(0, 2).join(', ');
-  return `당신은 ${myStrengths}이 강합니다. ` +
-    `반면 추천된 Persona는 ${theirStrengths}이 강하기 때문에 ` +
+  return `당신은 ${withI(myStrengths)} 강합니다. ` +
+    `반면 추천된 Persona는 ${withI(theirStrengths)} 강하기 때문에 ` +
     `함께 협업하면 팀 밸런스가 좋아질 것으로 예상됩니다.`;
 }
 

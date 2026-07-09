@@ -30,6 +30,15 @@ import { TYPES } from '../data/questions';
 // ─────────────────────────────────────────────
 const KEYS = ['A', 'B', 'C', 'D'];
 
+// 문구 표현 전용 — 받침 유무에 따라 "이"/"가" 조사를 자동 선택 (예: "소통" → "소통이", "분위기" → "분위기가")
+// 점수 계산과는 무관, 동적으로 생성되는 문장에 변수를 끼워 넣을 때 조사 오류를 막기 위한 공용 헬퍼
+export function withI(word) {
+  if (!word) return word;
+  const code = word.charCodeAt(word.length - 1);
+  if (code < 0xAC00 || code > 0xD7A3) return `${word}가`;
+  return (code - 0xAC00) % 28 !== 0 ? `${word}이` : `${word}가`;
+}
+
 const TYPE_NAMES = { A: '추진형', B: '소통형', C: '탐구형', D: '실행형' };
 const TYPE_ROLES = {
   A: { strength: '빠른 의사결정과 방향 설정',   weakness: '체계적 분석 없이 실행이 앞설 수 있어요' },
@@ -598,7 +607,8 @@ function buildSupplementAISummary(candidate, teamMembers, tab, score, breakdown)
 
   // ③ 협업 우선순위
   if (prioMatch) {
-    items.push({ value: contributions.priority || 0, text: `프로젝트 우선순위 "${prioOther}"가 팀과 동일합니다.` });
+    const prioParticle = withI(prioOther).endsWith('이') ? '이' : '가';
+    items.push({ value: contributions.priority || 0, text: `프로젝트 우선순위 "${prioOther}"${prioParticle} 팀과 동일합니다.` });
   } else if (prioRate >= 50) {
     items.push({ value: contributions.priority || 0, text: '프로젝트 진행 방향이 팀과 유사합니다.' });
   }

@@ -213,6 +213,8 @@ function MatchDetailSheet({ rec, onClose, teamMembers }) {
     prioPct_bd * weights.priority +
     balanceImp * weights.balance
   );
+  // 표시 전용 — 리스트와 동일한 소수점 한 자리 점수 (동점처럼 보이는 상황을 구분하기 위함, 정렬엔 영향 없음)
+  const teamScoreExact = styleSim*weights.style + domainPct*weights.domain + prioPct_bd*weights.priority + balanceImp*weights.balance;
   const teamLabel  = getMatchLabel(teamScore);
 
   // ── 후보 부족 성향 보유율 ──────────────────
@@ -277,7 +279,7 @@ function MatchDetailSheet({ rec, onClose, teamMembers }) {
               🏆 Team Contribution Score
             </p>
             <p className="text-5xl font-black leading-none mb-1" style={{ color: teamLabel.color }}>
-              {teamScore}
+              {teamScoreExact.toFixed(1)}
             </p>
             <p className="text-xs font-bold" style={{ color: teamLabel.color }}>{teamLabel.label}</p>
           </div>
@@ -437,7 +439,7 @@ function MatchDetailSheet({ rec, onClose, teamMembers }) {
                 style={{background:`linear-gradient(135deg,${teamLabel.color}15 0%,${teamLabel.color}05 100%)`,
                   border:`1px solid ${teamLabel.color}30`}}>
                 <span className="text-xs font-black text-gray-700">Team Contribution Score</span>
-                <span className="text-base font-black" style={{color:teamLabel.color}}>{teamScore}점</span>
+                <span className="text-base font-black" style={{color:teamLabel.color}}>{teamScoreExact.toFixed(1)}점</span>
               </div>
             </div>
           </div>
@@ -531,6 +533,18 @@ function srScoreBarColor(s) {
   if (s >= 40) return '#F59E0B';
   return '#EF4444';
 }
+// 표시 전용 — 정렬에 쓰는 정수 점수(rec.score)는 그대로 두고, 이미 있는 breakdown 원점수로
+// 소수점 한 자리까지 다시 계산해 보여준다 (동점처럼 보이는 79% vs 79%를 79.4% vs 78.6%처럼 구분).
+// 가중치·정렬 로직은 전혀 건드리지 않음 — buildTabRecommendations의 최종 Math.round() 이전 값을 그대로 재현.
+function preciseScore(bd, fallback) {
+  if (!bd) return fallback;
+  const styleSim   = bd.styleSim   ?? 0;
+  const domainPct  = bd.domainPct  ?? 0;
+  const balanceImp = bd.balanceImp ?? 0;
+  const prioPct    = bd.prioPct ?? bd.prioRate ?? 0;
+  const w = bd.weights || { style:0.40, domain:0.30, priority:0.20, balance:0.10 };
+  return styleSim*w.style + domainPct*w.domain + prioPct*w.priority + balanceImp*w.balance;
+}
 // 항목 아이콘 상태: ✓초록(긍정) / ~파랑(중립) / ·회색(낮음)
 // 긍정: 성향≥70% / 도메인≥1개 / 우선순위일치 / 밸런스+1점이상
 // 중립: 성향40~69% / 우선순위유사(50%)
@@ -549,6 +563,7 @@ function RecommendCard({ rec, rank, teamMembers, tab }) {
   const TCOLS  = { A:'#EF4444', B:'#10B981', C:'#8B5CF6', D:'#F59E0B' };
   const tColor = TCOLS[user.dominantType] || '#CBD5E1';
   const bd     = rec.breakdown ?? null;
+  const scoreExact = preciseScore(bd, score); // 소수점 한 자리 표시용 (순위·정렬은 rec.score 그대로 사용)
 
   // 항목별 상태
   const styleState   = bd ? srItemState(bd.styleSim  >= 70, bd.styleSim  >= 40) : null;
@@ -619,11 +634,11 @@ function RecommendCard({ rec, rank, teamMembers, tab }) {
               <span className="text-[10px] font-bold text-gray-600 flex-shrink-0">매칭 적합도</span>
               <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
                 <div className="h-full rounded-full transition-all duration-700"
-                  style={{ width:`${score}%`, background:'linear-gradient(90deg,#10B981,#3B82F6)' }}/>
+                  style={{ width:`${Math.min(100, scoreExact)}%`, background:'linear-gradient(90deg,#10B981,#3B82F6)' }}/>
               </div>
               <span className="text-xs font-black flex-shrink-0"
                 style={{ background:'linear-gradient(135deg,#10B981,#3B82F6)', WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent' }}>
-                {score}%
+                {scoreExact.toFixed(1)}%
               </span>
             </div>
 
@@ -1142,20 +1157,22 @@ export default function SupplementResult() {
               {/* 구분선 */}
               <div className="mx-5 border-t border-emerald-100 border-dashed mb-3"/>
 
-              {/* 추천 이유 */}
+              {/* 팀 진단 — 탭과 무관한 현재 팀 상태 요약. "우선 추천합니다" 같은 특정 탭의 추천 결과를
+                  약속하는 문구는 넣지 않음 (AI 추천 탭 기본값과 모순되는 것을 방지) */}
               <div className="px-5 pb-5">
                 <div className="flex items-center gap-1.5 mb-1.5">
-                  <span className="text-[10px] font-black uppercase tracking-widest text-blue-600">AI 추천 이유</span>
+                  <span className="text-[10px] font-black uppercase tracking-widest text-blue-600">팀 진단</span>
                 </div>
                 <p className="text-xs text-gray-600 leading-relaxed">
                   {leastKey ? (
                     <>
-                      AI는 팀 성향 균형도·역할 다양성·협업 스타일을 종합 분석하여,
-                      현재 {leastPct}%에 불과한 <span className="font-bold" style={{color:COLS[leastKey]}}>{TYPES[leastKey].name}</span>을
-                      보완할 팀원을 우선 추천합니다.
+                      AI는 팀 성향 균형도·역할 다양성·협업 스타일을 종합 분석한 결과,
+                      현재 {leastPct}%에 불과한 <span className="font-bold" style={{color:COLS[leastKey]}}>{TYPES[leastKey].name}</span> 보완이
+                      필요하다고 판단했습니다. 이 성향을 채워줄 팀원은{' '}
+                      <span className="font-bold text-gray-800">'밸런스 우선' 탭</span>에서 확인할 수 있어요.
                     </>
                   ) : (
-                    '이미 균형 잡힌 팀이므로, 협업 스타일·관심 도메인이 잘 맞는 팀원을 우선 추천합니다.'
+                    '이미 균형 잡힌 팀이에요. 아래 탭에서 성향·도메인·협업 스타일 등 원하는 기준으로 팀원을 찾아보세요.'
                   )}
                 </p>
               </div>

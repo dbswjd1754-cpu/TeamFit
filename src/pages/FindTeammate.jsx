@@ -31,6 +31,19 @@ function getUserPersona(user) {
   return buildPersona(user.typeRatio || {});
 }
 
+// 표시 전용 — 정렬에 쓰는 rec.score(정수)는 그대로 두고, 이미 있는 breakdown 원점수로
+// 소수점 한 자리까지 재계산해 동점처럼 보이는 값(예: 79% vs 79%)을 구분해서 보여준다.
+// 가중치·정렬 로직은 전혀 건드리지 않음 — AI 탭은 personaCompat이 balance 자리를 대신하므로 그대로 반영.
+function preciseScore(bd, fallback) {
+  if (!bd) return fallback;
+  const styleSim    = bd.styleSim  ?? 0;
+  const domainPct   = bd.domainPct ?? 0;
+  const prioPct      = bd.prioPct ?? bd.prioRate ?? 0;
+  const balanceTerm = bd.personaCompat !== undefined ? bd.personaCompat : (bd.balanceImp ?? 0);
+  const w = bd.weights || { style:0.40, domain:0.30, priority:0.20, balance:0.10 };
+  return styleSim*w.style + domainPct*w.domain + prioPct*w.priority + balanceTerm*w.balance;
+}
+
 /* ── AI 추천 이유 목록 ── */
 function genAIReasons(rec, tab) {
   const { score, breakdown: bd } = rec;
@@ -119,6 +132,7 @@ function RecommendCard({ rec, rank, tab, onOpen }) {
   const accent        = TAB_ACCENT[tab];
   const commonDomains = bd?.commonDomains || [];
   const reasons       = genAIReasons(rec, tab);
+  const scoreExact    = preciseScore(bd, score);
   const TCOLS         = { A:'#EF4444', B:'#10B981', C:'#8B5CF6', D:'#F59E0B' };
   const tColor        = TCOLS[persona.key?.[0]] || TCOLS[user.dominantType] || '#CBD5E1';
 
@@ -156,10 +170,10 @@ function RecommendCard({ rec, rank, tab, onOpen }) {
           <div className="flex items-center gap-2 mb-2">
             <span className="text-[10px] text-gray-500 flex-shrink-0">매칭 적합도</span>
             <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
-              <div className="h-full rounded-full" style={{ width:`${score}%`, backgroundColor: accent }}/>
+              <div className="h-full rounded-full" style={{ width:`${Math.min(100, scoreExact)}%`, backgroundColor: accent }}/>
             </div>
             <span className="text-xs font-black flex-shrink-0" style={{ color: accent }}>
-              {score}%
+              {scoreExact.toFixed(1)}%
             </span>
           </div>
 
@@ -193,6 +207,7 @@ function DetailSheet({ rec, me, tab, onClose }) {
   const persona       = getUserPersona(user);
   const myPersona     = getUserPersona(me);
   const label         = getMatchLabel(score);
+  const scoreExact    = preciseScore(bd, score);
   const accent        = TAB_ACCENT[tab];
   const TCOLS         = { A:'#EF4444', B:'#10B981', C:'#8B5CF6', D:'#F59E0B' };
   const tColor        = TCOLS[persona.key?.[0]] || TCOLS[user.dominantType] || '#CBD5E1';
@@ -271,14 +286,36 @@ function DetailSheet({ rec, me, tab, onClose }) {
   const itemsTotal = ALL_ITEMS.reduce((s, it) => s + it.score, 0);
   // score는 rec.score를 그대로 사용 (재계산 없음)
 
-  // AI 추천 이유 (✔ 체크리스트)
-  const aiReasons = [];
-  if (rawStyle >= 70)             aiReasons.push('성향 유사도가 매우 높습니다.');
-  else if (rawStyle >= 50)        aiReasons.push('협업 스타일이 잘 맞습니다.');
-  if (commonDomains.length >= 2)  aiReasons.push(`${commonDomains.slice(0,2).join(', ')} 도메인이 일치합니다.`);
-  else if (commonDomains.length === 1) aiReasons.push(`${commonDomains[0]} 도메인이 일치합니다.`);
-  if (bd?.prioMatch)              aiReasons.push('팀 선호 스타일이 일치합니다.');
-  if (aiReasons.length < 2)       aiReasons.push('종합적인 매칭 점수가 높습니다.');
+  // AI 추천 이유 (✔ 체크리스트) — ALL_ITEMS의 실제 기여 점수(raw × 가중치) 기준으로 정렬해
+  // 후보마다 어떤 요소가 가장 크게 기여했는지에 따라 다른 순서·조합이 나오도록 함
+  const aiReasons = ALL_ITEMS
+    .map(item => {
+      if (item.label === '성향 유사도') {
+        if (rawStyle >= 70) return { value: item.score, text: '성향 유사도가 매우 높습니다.' };
+        if (rawStyle >= 50) return { value: item.score, text: '협업 스타일이 잘 맞습니다.' };
+        return null;
+      }
+      if (item.label === '관심 도메인') {
+        if (commonDomains.length >= 2) return { value: item.score, text: `${commonDomains.slice(0,2).join(', ')} 도메인이 일치합니다.` };
+        if (commonDomains.length === 1) return { value: item.score, text: `${commonDomains[0]} 도메인이 일치합니다.` };
+        return null;
+      }
+      if (item.label === '팀 선호 스타일') {
+        return bd?.prioMatch ? { value: item.score, text: '팀 선호 스타일이 일치합니다.' } : null;
+      }
+      if (item.label === '잘 맞는 Persona') {
+        return bd?.isPersonaMatch ? { value: item.score, text: '잘 맞는 Persona 조합입니다.' } : null;
+      }
+      if (item.label === '팀 밸런스 기여' && item.raw >= 60) {
+        return { value: item.score, text: '팀 밸런스 개선에 기여합니다.' };
+      }
+      return null;
+    })
+    .filter(Boolean)
+    .sort((a, b) => b.value - a.value)
+    .slice(0, 4)
+    .map(r => r.text);
+  if (aiReasons.length < 2) aiReasons.push('종합적인 매칭 점수가 높습니다.');
 
   return (
     <>
@@ -331,7 +368,7 @@ function DetailSheet({ rec, me, tab, onClose }) {
               매칭 적합도
             </p>
             <p className="text-5xl font-black leading-none mb-1" style={{ color:label.color }}>
-              {score}%
+              {scoreExact.toFixed(1)}%
             </p>
             <p className="text-xs font-bold" style={{ color:label.color }}>{label.label}</p>
           </div>
@@ -358,28 +395,36 @@ function DetailSheet({ rec, me, tab, onClose }) {
               {sectionTitle}
             </p>
             <div className="bg-gray-50 rounded-2xl p-3 space-y-2.5">
-              {ALL_ITEMS.map(item => (
-                <div key={item.label}>
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="text-[11px] font-semibold text-gray-600 w-20 flex-shrink-0">
-                      {item.label}
-                    </span>
-                    <div className="flex-1 h-1.5 bg-gray-200 rounded-full overflow-hidden">
-                      <div className="h-full rounded-full"
-                        style={{ width:`${Math.min(100,(item.score/item.max)*100)}%`,
-                          backgroundColor:item.color }}/>
+              {ALL_ITEMS.map(item => {
+                // 기여도 0점 항목은 긍정 항목과 시각적으로 구분되도록 회색 처리
+                // (숨기거나 삭제하지 않고, "일치하지 않음"이라는 걸 색으로 바로 알 수 있게)
+                const isZero = item.score === 0;
+                const rowColor = isZero ? '#D1D5DB' : item.color;
+                return (
+                  <div key={item.label}>
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className={`text-[11px] font-semibold w-20 flex-shrink-0 ${isZero ? 'text-gray-400' : 'text-gray-600'}`}>
+                        {item.label}
+                      </span>
+                      <div className="flex-1 h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                        <div className="h-full rounded-full"
+                          style={{ width:`${Math.min(100,(item.score/item.max)*100)}%`,
+                            backgroundColor:rowColor }}/>
+                      </div>
+                      <span className="text-xs font-black flex-shrink-0 w-10 text-right"
+                        style={{ color:rowColor }}>
+                        {item.score}/{item.max}
+                      </span>
                     </div>
-                    <span className="text-xs font-black flex-shrink-0 w-10 text-right"
-                      style={{ color:item.color }}>
-                      {item.score}/{item.max}
-                    </span>
+                    <p className="text-[9px] text-gray-400 pl-20">
+                      {isZero ? '일치하지 않음 · ' : ''}{item.detail}
+                    </p>
                   </div>
-                  <p className="text-[9px] text-gray-400 pl-20">{item.detail}</p>
-                </div>
-              ))}
+                );
+              })}
               <div className="border-t border-gray-200 pt-2 flex items-center justify-between">
                 <span className="text-xs font-black text-gray-600">최종 매칭 적합도</span>
-                <span className="text-sm font-black" style={{ color:label.color }}>{score}%</span>
+                <span className="text-sm font-black" style={{ color:label.color }}>{scoreExact.toFixed(1)}%</span>
               </div>
             </div>
           </div>
