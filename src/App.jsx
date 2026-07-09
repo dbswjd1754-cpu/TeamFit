@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import GroupEntry        from './pages/GroupEntry';
 import JoinRedirect      from './pages/JoinRedirect';
 import AlreadyCompleted  from './pages/AlreadyCompleted';
+import ProfileResult     from './pages/ProfileResult';
 import OnboardingName     from './pages/OnboardingName';
 import OnboardingDomain   from './pages/OnboardingDomain';
 import OnboardingPriority from './pages/OnboardingPriority';
@@ -31,6 +32,9 @@ export default function App() {
 
         {/* 재접속 */}
         <Route path="/already-completed"      element={<AlreadyCompleted />} />
+
+        {/* 내 프로필 보기 (그룹 무관 — 전역 Persona) */}
+        <Route path="/profile"                element={<ProfileResult />} />
 
         {/* 온보딩 */}
         <Route path="/onboarding/name"        element={<OnboardingName />} />

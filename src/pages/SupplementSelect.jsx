@@ -50,6 +50,11 @@ export default function SupplementSelect() {
     const typeName= (TYPES[p.typeKey]?.name || '').toLowerCase();
     return name.includes(q) || domains.includes(q) || typeName.includes(q);
   });
+  // ★ 본인(나)은 항상 리스트 맨 위에 고정
+  if (myMember) {
+    const meIdx = filteredMembers.findIndex(m => m.id === myMember.id);
+    if (meIdx > 0) filteredMembers.unshift(filteredMembers.splice(meIdx, 1)[0]);
+  }
 
   const { current, want } = state;
   const limit   = current;

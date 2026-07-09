@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import useGroupStore from '../store/useGroupStore';
+import useUserStore  from '../store/useUserStore';
 import { TYPES }     from '../data/questions';
 import { buildPersona } from '../utils/persona';
 
@@ -113,6 +114,15 @@ export default function MyProfile() {
   const affinity = AFFINITY[p.typeKey] || [];
   const complement = COMPLEMENT[p.typeKey] || '';
 
+  // ★ 성향 다시 검사하기 — 이름/도메인/우선순위는 유지한 채 검사만 재시작
+  const handleRetake = () => {
+    const { setName, setDomains, setPriority } = useUserStore.getState();
+    setName(member.name);
+    setDomains(p.domains || []);
+    setPriority(p.priority || '');
+    navigate('/onboarding/test');
+  };
+
   // ★ Persona 계산 (OnboardingResult와 동일 로직)
   const _sc = p.scores || {};
   const _r  = { A:_sc.추진||0, B:_sc.소통||0, C:_sc.탐구||0, D:_sc.실행||0 };
@@ -222,6 +232,12 @@ export default function MyProfile() {
             hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0"
           style={{background:'linear-gradient(135deg,#10B981 0%,#3B82F6 100%)'}}>
           그룹 홈으로 →
+        </button>
+        <button onClick={handleRetake}
+          className="w-full py-3 rounded-2xl font-bold text-sm text-gray-500
+            bg-white border-2 border-gray-100 hover:border-gray-200 hover:shadow-sm
+            active:scale-[0.98] transition-all duration-150">
+          성향 다시 검사하기
         </button>
       </div>
     </div>

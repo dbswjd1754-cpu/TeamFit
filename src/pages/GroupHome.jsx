@@ -129,7 +129,25 @@ function ProfileDonutChart({ scores }) {
     </div>
   );
 }
+/* ── 나의 Persona 산출 근거 설명 (실제 typeRatio 기반) ── */
+function describeMyPersona(persona, typeRatio) {
+  const sorted = Object.entries(typeRatio).filter(([, v]) => v > 0).sort((a, b) => b[1] - a[1]);
+  const [k1, v1] = sorted[0] || ['A', 0];
+  const [k2, v2] = sorted[1] || [null, 0];
+  const n1 = TYPES[k1]?.name;
+  const n2 = k2 ? TYPES[k2]?.name : null;
+
+  if (persona.type === 'balanced') {
+    return `당신은 네 가지 성향이 ${n1} ${v1}%로 비슷하게 균형을 이루어 나타났습니다.`;
+  }
+  if (persona.type === 'dual') {
+    return `당신은 ${n1} ${v1}%, ${n2} ${v2}%로 두 성향이 비슷하게 나타났습니다.`;
+  }
+  return `당신은 ${n1} 성향이 ${v1}%로 가장 높게 나타났습니다.`;
+}
+
 function InlineMyProfile({ member }) {
+  const navigate = useNavigate();
   const [showPI, setShowPI] = useState(false);
   const [showCI, setShowCI] = useState(false);
 
@@ -195,6 +213,13 @@ function InlineMyProfile({ member }) {
                 ))}
               </div>
               <p className="text-sm text-gray-600 leading-relaxed mb-4">가장 높은 성향과 두 번째 성향의 조합을 기반으로 TeamFit Persona가 생성됩니다.</p>
+              <div className="bg-gray-50 rounded-2xl p-4 mb-4 border border-gray-100">
+                <p className="text-xs font-bold text-gray-500 mb-1">나의 경우</p>
+                <p className="text-sm text-gray-700 leading-relaxed mb-1">{describeMyPersona(myPersona, ratio)}</p>
+                <p className="text-sm text-gray-700 leading-relaxed">
+                  그 결과 <span className="font-black">{myPersona.emoji} {myPersona.name} ({myPersona.en})</span> Persona가 부여됐습니다.
+                </p>
+              </div>
               <button onClick={()=>setShowPI(false)} className="w-full mt-2 py-3 rounded-2xl bg-gray-100 text-sm font-bold text-gray-600">닫기</button>
             </div>
           </div>
@@ -207,18 +232,10 @@ function InlineMyProfile({ member }) {
             style={{animation:'sheetUp .25s cubic-bezier(.32,.72,0,1)'}}>
             <div className="bg-white rounded-t-3xl pt-3 pb-10 px-5 shadow-2xl" style={{maxHeight:'80vh',overflowY:'auto'}}>
               <div className="w-10 h-1 bg-gray-200 rounded-full mx-auto mb-5"/>
-              <p className="text-base font-black text-gray-900 mb-4">AI 궁합점수는 어떻게 계산되나요?</p>
-              <p className="text-sm text-gray-600 leading-relaxed mb-4">AI 궁합점수는 Persona 궁합·협업 스타일·관심 도메인·프로젝트 경험을 종합하여 계산됩니다.</p>
-              <div className="space-y-2 mb-4">
-                {[['Persona 궁합',38,40,'#4F6EF7'],['협업 스타일',26,30,'#10B981'],['도메인 일치',18,20,'#8B5CF6'],['프로젝트 경험',8,10,'#F59E0B']].map(([l,s,m,c])=>(
-                  <div key={l}>
-                    <div className="flex justify-between mb-0.5"><span className="text-xs text-gray-600">{l}</span><span className="text-xs font-black" style={{color:c}}>{s}/{m}</span></div>
-                    <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden"><div className="h-full rounded-full" style={{width:`${(s/m)*100}%`,backgroundColor:c}}/></div>
-                  </div>
-                ))}
-                <div className="flex justify-between border-t border-gray-200 pt-2"><span className="text-xs font-black text-gray-700">최종 궁합점수</span><span className="text-sm font-black text-emerald-600">90점</span></div>
-              </div>
-              <p className="text-xs text-gray-500 leading-relaxed">점수가 높을수록 함께 프로젝트를 진행하기 좋은 조합으로 판단합니다.</p>
+              <p className="text-base font-black text-gray-900 mb-4">잘 맞는 Persona는 어떻게 선정되나요?</p>
+              <p className="text-sm text-gray-600 leading-relaxed mb-4">잘 맞는 Persona는 내 성향 비율과 팀 선호 스타일을 기준으로, 함께 협업했을 때 시너지가 날 가능성이 높은 Persona를 추천한 결과입니다.</p>
+              <p className="text-sm text-gray-600 leading-relaxed mb-4">내가 강하게 가진 성향과 보완이 필요한 성향을 함께 고려하여 협업 방식이 잘 맞거나 서로의 부족한 부분을 채워줄 수 있는 Persona를 우선 추천합니다.</p>
+              <p className="text-xs text-gray-500 leading-relaxed">이 결과는 실제 팀원 추천 시 Persona 궁합을 판단하는 참고 기준으로 사용됩니다.</p>
               <button onClick={()=>setShowCI(false)} className="w-full mt-4 py-3 rounded-2xl bg-gray-100 text-sm font-bold text-gray-600">닫기</button>
             </div>
           </div>
@@ -298,20 +315,17 @@ function InlineMyProfile({ member }) {
             <button onClick={()=>setShowCI(true)}
               className="w-4 h-4 rounded-full border border-gray-300 flex items-center justify-center
                 text-[9px] text-gray-400 hover:border-gray-500 hover:text-gray-600 transition-colors"
-              aria-label="궁합 선정 기준">ⓘ</button>
+              aria-label="Persona 선정 기준">ⓘ</button>
           </div>
           <div className="space-y-2">
-            {matchedPersonas.map(({persona,score},i)=>(
+            {matchedPersonas.map(({persona},i)=>(
               <div key={i} className="bg-gray-50 rounded-2xl px-3 py-3">
-                <div className="flex items-center justify-between mb-1.5">
-                  <div className="flex items-center gap-2">
-                    <span className="text-lg">{persona.emoji}</span>
-                    <div>
-                      <p className="text-sm font-black text-gray-900">{persona.name}</p>
-                      <p className="text-[10px] text-gray-400">{persona.en}</p>
-                    </div>
+                <div className="flex items-center gap-2 mb-1.5">
+                  <span className="text-lg">{persona.emoji}</span>
+                  <div>
+                    <p className="text-sm font-black text-gray-900">{persona.name}</p>
+                    <p className="text-[10px] text-gray-400">{persona.en}</p>
                   </div>
-                  <span className="text-xs font-black text-emerald-600">{score}%</span>
                 </div>
                 <p className="text-xs text-gray-500 leading-relaxed bg-white rounded-xl px-2.5 py-1.5">
                   {persona.desc}
@@ -338,6 +352,21 @@ function InlineMyProfile({ member }) {
         <span className="text-sm text-gray-400">마지막 분석일</span>
         <span className="text-sm font-bold text-gray-700">{completedDate}</span>
       </div>
+
+      {/* ★ 성향 다시 검사하기 — 이름/도메인/우선순위는 유지한 채 검사만 재시작 */}
+      <button
+        onClick={() => {
+          const { setName, setDomains, setPriority } = useUserStore.getState();
+          setName(member.name);
+          setDomains(p.domains || []);
+          setPriority(p.priority || '');
+          navigate('/onboarding/test');
+        }}
+        className="w-full py-3 rounded-2xl font-bold text-sm text-gray-500
+          bg-white border-2 border-gray-100 hover:border-gray-200 hover:shadow-sm
+          active:scale-[0.98] transition-all duration-150">
+        성향 다시 검사하기
+      </button>
 
     </div>
   );

@@ -6,6 +6,7 @@ import {
   subscribeMembers, memberToScoringFormat,
   subscribeDomains,
   getCustomDomainsFromDB, saveCustomDomainToDB,
+  getGroupInfo,
   debugDump,
 } from './groupDB';
 
@@ -35,6 +36,7 @@ let _unsubDomains = null;
 
 const useGroupStore = create((set, get) => ({
   groupCode:     session.groupCode   || '',
+  groupName:     session.groupName   || '',
   isEntered:     session.isEntered   || false,
   currentName:   session.currentName || '',
 
@@ -43,8 +45,10 @@ const useGroupStore = create((set, get) => ({
   customDomains: session.groupCode ? getCustomDomainsFromDB(session.groupCode) : [],
   isLoading:     false,
 
-  /* ── 그룹 입장 ── */
-  setGroupCode: async (code) => {
+  /* ── 그룹 입장 ──
+     groupNameHint: 그룹 생성 시점처럼 이름을 이미 알고 있으면 바로 전달 —
+       없으면(코드 입력/초대링크) groups/{code} 문서에서 조회 */
+  setGroupCode: async (code, groupNameHint) => {
     if (!code) return;
 
     // 이전 구독 모두 해제
@@ -52,11 +56,13 @@ const useGroupStore = create((set, get) => ({
     if (_unsubDomains) { _unsubDomains(); _unsubDomains = null; }
 
     const prev = loadSession();
-    saveSession({ ...prev, groupCode: code, isEntered: true });
+    const groupName = groupNameHint ?? '';
+    saveSession({ ...prev, groupCode: code, isEntered: true, groupName });
 
     // 캐시된 값으로 즉시 렌더
     set({
       groupCode:     code,
+      groupName,
       isEntered:     true,
       members:       getMembersCached(code),
       customDomains: getCustomDomainsFromDB(code),
@@ -73,6 +79,16 @@ const useGroupStore = create((set, get) => ({
     _unsubDomains = subscribeDomains(code, (domains) => {
       set({ customDomains: domains });
     });
+
+    // ★ 이름을 미리 전달받지 못한 경우(코드 입력/초대링크) — 그룹 메타에서 이름 조회
+    if (!groupNameHint) {
+      const info = await getGroupInfo(code);
+      if (info?.groupName && get().groupCode === code) {
+        const p2 = loadSession();
+        saveSession({ ...p2, groupName: info.groupName });
+        set({ groupName: info.groupName });
+      }
+    }
   },
 
   /* ── 현재 사용자 이름 저장 ── */
@@ -124,7 +140,7 @@ const useGroupStore = create((set, get) => ({
     if (_unsubMembers) { _unsubMembers(); _unsubMembers = null; }
     if (_unsubDomains) { _unsubDomains(); _unsubDomains = null; }
     saveSession({});
-    set({ groupCode:'', isEntered:false, currentName:'', members:[], customDomains:[], isLoading:false });
+    set({ groupCode:'', groupName:'', isEntered:false, currentName:'', members:[], customDomains:[], isLoading:false });
   },
 
   /* ── 도메인 API ── */

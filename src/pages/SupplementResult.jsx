@@ -1177,15 +1177,16 @@ export default function SupplementResult() {
                   <span className="text-[10px] font-black uppercase tracking-widest text-amber-600">보완 필요</span>
                 </div>
                 <div className="flex flex-wrap gap-1.5 mb-2">
-                  {lackingOrder.filter(k=>(actualRatio[k]||0)<0.25).slice(0,3).map(k=>(
-                    <span key={k} className="text-xs font-bold px-2.5 py-1 rounded-full bg-red-50 text-red-500 border border-red-100">
+                  {lackedSorted.filter(k=>(actualRatio[k]||0)<0.25).slice(0,3).map(k=>(
+                    <span key={k} className="text-xs font-bold px-2.5 py-1 rounded-full border"
+                      style={{ color:TYPES[k].color, backgroundColor:TYPES[k].bg, borderColor:`${TYPES[k].color}30` }}>
                       {TYPES[k].emoji} {TYPES[k].name} {Math.round((actualRatio[k]||0)*100)}%
                     </span>
                   ))}
                 </div>
                 <p className="text-xs text-gray-600 leading-relaxed">
-                  {lackingOrder.filter(k=>(actualRatio[k]||0)<0.25).length >= 2
-                    ? `현재 팀은 ${lackingOrder.filter(k=>(actualRatio[k]||0)<0.25).slice(0,2).map(k=>TYPES[k].name).join('과 ')} 비율이 동일하게 부족합니다. 두 성향을 함께 보완할 수 있는 팀원을 우선 추천합니다.`
+                  {lackedSorted.filter(k=>(actualRatio[k]||0)<0.25).length >= 2
+                    ? `현재 팀은 ${lackedSorted.filter(k=>(actualRatio[k]||0)<0.25).slice(0,2).map(k=>TYPES[k].name).join('과 ')} 비율이 동일하게 부족합니다. 두 성향을 함께 보완할 수 있는 팀원을 우선 추천합니다.`
                     : LACK_DESC[leastKey]}
                 </p>
               </div>

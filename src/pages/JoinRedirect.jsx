@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import useGroupStore from '../store/useGroupStore';
 import { TeamFitLogo } from '../components/ui/PuzzleCharacters';
+import { routeAfterGroupEntry } from '../utils/profileRouting';
 
 export default function JoinRedirect() {
   const navigate      = useNavigate();
@@ -23,7 +24,8 @@ export default function JoinRedirect() {
     if (currentName && isCurrentMemberCompleted()) {
       navigate('/already-completed', { replace:true });
     } else {
-      navigate('/onboarding/name', { replace:true });
+      // ★ 다른 그룹에서 이미 Persona를 완료했다면 재사용 — 성향검사 스킵
+      routeAfterGroupEntry(navigate, { replace:true });
     }
   }, []);
 

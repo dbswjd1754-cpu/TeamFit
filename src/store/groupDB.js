@@ -2,8 +2,11 @@
  * groupDB v6 — Firebase Firestore 기반 공용 저장소
  *
  * Firestore 구조:
+ *   groups/{groupCode}                — 그룹 메타 정보 (groupName, createdAt)
  *   groups/{groupCode}/members/{memberId}
  *   groups/{groupCode}/domains/{domainId}
+ *   profiles/{name}                   — 그룹과 무관한 전역 사용자 Persona 프로필
+ *     .myGroups: [{ groupCode, groupName, joinedAt, lastAccessAt }]
  *
  * 오프라인 fallback:
  *   Firebase 연결 실패 시 localStorage로 자동 전환
@@ -213,6 +216,144 @@ export async function saveCustomDomainToDB(groupCode, domain) {
 // ── 커스텀 도메인 동기 조회 (초기값용) ────────
 export function getCustomDomainsFromDB(groupCode) {
   return lsGetDomains(groupCode);
+}
+
+// ── 전역 사용자 Persona 프로필 (그룹 무관) ────
+// 한 번 성향검사를 완료하면 이름 기준으로 저장되어,
+// 다른 그룹을 만들거나 참여할 때 재사용됩니다.
+const LS_PROFILE_KEY = 'teamfit_profile_v1';
+
+function lsGetProfile(name) {
+  if (!name) return null;
+  try { return JSON.parse(localStorage.getItem(LS_PROFILE_KEY) || '{}')[name] || null; } catch { return null; }
+}
+// ★ merge — 기존 필드(예: myGroups)를 지우지 않고 부분 갱신
+function lsMergeProfile(name, patch) {
+  if (!name) return;
+  try {
+    const all = JSON.parse(localStorage.getItem(LS_PROFILE_KEY) || '{}');
+    all[name] = { ...(all[name] || {}), ...patch };
+    localStorage.setItem(LS_PROFILE_KEY, JSON.stringify(all));
+  } catch {}
+}
+
+// ★ merge:true — typeRatio만 갱신해도 myGroups 등 다른 필드가 지워지지 않음
+export async function saveUserProfileToDB(name, profile) {
+  if (!name) return;
+  lsMergeProfile(name, profile);
+
+  if (isFirebaseReady()) {
+    try {
+      await setDoc(doc(db, 'profiles', name), { ...profile, name, updatedAt: serverTimestamp() }, { merge: true });
+    } catch (e) {
+      console.warn('[groupDB] 전역 프로필 Firestore 저장 실패 (로컬은 저장됨):', e.message);
+    }
+  }
+}
+
+export async function getUserProfileFromDB(name) {
+  if (!name) return null;
+
+  if (isFirebaseReady()) {
+    try {
+      const snap = await getDoc(doc(db, 'profiles', name));
+      if (snap.exists()) {
+        const data = snap.data();
+        lsMergeProfile(name, data);
+        return data;
+      }
+      // ★ self-heal — Firestore엔 없지만 로컬 캐시에 있으면 즉시 복구해 저장
+      //   (그렇지 않으면 이후 부분 필드만 merge 저장할 때 나머지 필드가 없는
+      //    불완전한 문서가 그대로 생성되어버림)
+      const cached = lsGetProfile(name);
+      if (cached) {
+        try {
+          await setDoc(doc(db, 'profiles', name), { ...cached, name, updatedAt: serverTimestamp() }, { merge: true });
+        } catch (e2) {
+          console.warn('[groupDB] 전역 프로필 복구 저장 실패:', e2.message);
+        }
+        return cached;
+      }
+      return null;
+    } catch (e) {
+      console.warn('[groupDB] 전역 프로필 Firestore 읽기 실패, localStorage fallback:', e.message);
+    }
+  }
+
+  return lsGetProfile(name);
+}
+
+// ── 그룹 메타 정보 (그룹 이름) ────────────────
+// 기존 groupCode 로직은 그대로 유지 — groupName은 groups/{code} 루트 문서에 추가 저장
+const LS_GROUPINFO_KEY = 'teamfit_groupinfo_v1';
+
+function lsGetGroupInfo(code) {
+  if (!code) return null;
+  try { return JSON.parse(localStorage.getItem(LS_GROUPINFO_KEY) || '{}')[code] || null; } catch { return null; }
+}
+function lsSaveGroupInfo(code, info) {
+  if (!code) return;
+  try {
+    const all = JSON.parse(localStorage.getItem(LS_GROUPINFO_KEY) || '{}');
+    all[code] = { ...(all[code] || {}), ...info };
+    localStorage.setItem(LS_GROUPINFO_KEY, JSON.stringify(all));
+  } catch {}
+}
+
+// 그룹 생성 시 1회 호출 — groupName + createdAt 저장
+export async function saveGroupInfo(code, { groupName }) {
+  if (!code) return;
+  const info = { groupCode: code, groupName: groupName || '' };
+  lsSaveGroupInfo(code, { ...info, createdAt: Date.now() });
+
+  if (isFirebaseReady()) {
+    try {
+      await setDoc(doc(db, 'groups', code), { ...info, createdAt: serverTimestamp() }, { merge: true });
+    } catch (e) {
+      console.warn('[groupDB] 그룹 메타 Firestore 저장 실패 (로컬은 저장됨):', e.message);
+    }
+  }
+}
+
+export async function getGroupInfo(code) {
+  if (!code) return null;
+
+  if (isFirebaseReady()) {
+    try {
+      const snap = await getDoc(doc(db, 'groups', code));
+      if (snap.exists()) {
+        const data = snap.data();
+        lsSaveGroupInfo(code, data);
+        return data;
+      }
+    } catch (e) {
+      console.warn('[groupDB] 그룹 메타 Firestore 읽기 실패, localStorage fallback:', e.message);
+    }
+  }
+
+  // ★ 기존(그룹 이름 필드 도입 전) 그룹과의 호환 — 문서 없으면 null 반환, 호출부에서 groupCode로 대체 표시
+  return lsGetGroupInfo(code);
+}
+
+// ── 내 그룹 목록 (profiles/{name}.myGroups) ──────
+// 그룹 생성/참여/재입장 시마다 호출 — 없으면 추가, 있으면 lastAccessAt만 갱신
+export async function recordGroupAccess(name, { groupCode, groupName }) {
+  if (!name || !groupCode) return;
+  const existing = (await getUserProfileFromDB(name)) || {};
+  const groups = Array.isArray(existing.myGroups) ? [...existing.myGroups] : [];
+  const now = Date.now();
+  const idx = groups.findIndex(g => g.groupCode === groupCode);
+  if (idx >= 0) {
+    groups[idx] = { ...groups[idx], groupName: groupName || groups[idx].groupName, lastAccessAt: now };
+  } else {
+    groups.push({ groupCode, groupName: groupName || '', joinedAt: now, lastAccessAt: now });
+  }
+  await saveUserProfileToDB(name, { myGroups: groups });
+}
+
+// 동기 조회 (캐시 우선) — 시작 화면 등에서 즉시 렌더용
+export function getMyGroupsCached(name) {
+  return lsGetProfile(name)?.myGroups || [];
 }
 
 // ── 동기 조회 (캐시 우선) ────────────────────
