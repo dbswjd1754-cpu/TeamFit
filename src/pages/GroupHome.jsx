@@ -129,22 +129,12 @@ function ProfileDonutChart({ scores }) {
     </div>
   );
 }
-/* ── 나의 Persona 산출 근거 설명 (실제 typeRatio 기반) ── */
-function describeMyPersona(persona, typeRatio) {
-  const sorted = Object.entries(typeRatio).filter(([, v]) => v > 0).sort((a, b) => b[1] - a[1]);
-  const [k1, v1] = sorted[0] || ['A', 0];
-  const [k2, v2] = sorted[1] || [null, 0];
-  const n1 = TYPES[k1]?.name;
-  const n2 = k2 ? TYPES[k2]?.name : null;
-
-  if (persona.type === 'balanced') {
-    return `당신은 네 가지 성향이 비슷한 비율로 균형을 이루고 있으며, 그중 ${n1}(${v1}%)이 가장 높게 나타났습니다.`;
-  }
-  if (persona.type === 'dual') {
-    return `당신은 ${n1} ${v1}%, ${n2} ${v2}%로 두 성향이 비슷하게 나타났습니다.`;
-  }
-  return `당신은 ${n1} 성향이 ${v1}%로 가장 높게 나타났습니다.`;
-}
+/* ── Persona 목록 표시용 카테고리 정의 (buildPersona()의 판정 기준과 동일) ── */
+const PERSONA_CATEGORIES = [
+  { type:'single',   label:'단일 성향형', rule:'1위 성향이 40% 이상이면서 2위와 10%p 이상 차이 날 때 부여됩니다.' },
+  { type:'dual',     label:'조합형',      rule:'1위와 2위 성향의 차이가 5%p 이하일 때 부여됩니다.' },
+  { type:'balanced', label:'균형형',      rule:'0%보다 큰 성향이 3개 이상이고, 최댓값과 최솟값의 차이가 15%p 미만일 때 부여됩니다.' },
+];
 
 function InlineMyProfile({ member }) {
   const navigate = useNavigate();
@@ -201,7 +191,7 @@ function InlineMyProfile({ member }) {
           <div className="fixed inset-0 z-40 bg-black/30" onClick={()=>setShowPI(false)}/>
           <div className="fixed bottom-0 left-0 right-0 z-50 max-w-md mx-auto"
             style={{animation:'sheetUp .25s cubic-bezier(.32,.72,0,1)'}}>
-            <div className="bg-white rounded-t-3xl pt-3 pb-10 px-5 shadow-2xl" style={{maxHeight:'80vh',overflowY:'auto'}}>
+            <div className="bg-white rounded-t-3xl pt-3 pb-10 px-5 shadow-2xl" style={{maxHeight:'85vh',overflowY:'auto'}}>
               <div className="w-10 h-1 bg-gray-200 rounded-full mx-auto mb-5"/>
               <p className="text-base font-black text-gray-900 mb-4">Persona는 어떻게 결정되나요?</p>
               <p className="text-sm text-gray-600 leading-relaxed mb-4">TeamFit Persona는 성향검사 10문항의 응답 결과를 기반으로 생성됩니다.</p>
@@ -212,15 +202,38 @@ function InlineMyProfile({ member }) {
                   </div>
                 ))}
               </div>
-              <p className="text-sm text-gray-600 leading-relaxed mb-4">가장 높은 성향과 두 번째 성향의 조합을 기반으로 TeamFit Persona가 생성됩니다.</p>
-              <div className="bg-gray-50 rounded-2xl p-4 mb-4 border border-gray-100">
-                <p className="text-xs font-bold text-gray-500 mb-1">나의 경우</p>
-                <p className="text-sm text-gray-700 leading-relaxed mb-1">{describeMyPersona(myPersona, ratio)}</p>
-                <p className="text-sm text-gray-700 leading-relaxed">
-                  그 결과 <span className="font-black">{myPersona.emoji} {myPersona.name} ({myPersona.en})</span> Persona가 부여됐습니다.
-                </p>
+              <p className="text-sm text-gray-600 leading-relaxed mb-4">10문항 결과를 합산해 네 성향의 비율을 계산한 뒤, 아래 기준에 따라 총 11가지 Persona 중 하나가 결정됩니다.</p>
+              <div className="space-y-4">
+                {PERSONA_CATEGORIES.map(cat => (
+                  <div key={cat.type}>
+                    <p className="text-xs font-black text-gray-700 mb-1">{cat.label}</p>
+                    <p className="text-[11px] text-gray-400 leading-relaxed mb-2">{cat.rule}</p>
+                    <div className="space-y-1.5">
+                      {getAllPersonas().filter(p => p.type === cat.type).map(p => {
+                        const isMine = p.key === myPersona.key;
+                        return (
+                          <div key={p.key}
+                            className={`flex items-center gap-2 px-3 py-2 rounded-xl border ${
+                              isMine ? 'bg-emerald-50 border-emerald-200' : 'bg-gray-50 border-transparent'
+                            }`}>
+                            <span className="text-base flex-shrink-0">{p.emoji}</span>
+                            <div className="flex-1 min-w-0">
+                              <p className={`text-xs font-bold ${isMine ? 'text-emerald-700' : 'text-gray-700'}`}>
+                                {p.name} <span className="text-[10px] font-normal text-gray-400">{p.en}</span>
+                              </p>
+                              <p className="text-[10px] text-gray-400 truncate">{p.strengths.slice(0,2).join(' · ')}</p>
+                            </div>
+                            {isMine && (
+                              <span className="text-[9px] font-black text-emerald-500 flex-shrink-0">✔ 나의 Persona</span>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
               </div>
-              <button onClick={()=>setShowPI(false)} className="w-full mt-2 py-3 rounded-2xl bg-gray-100 text-sm font-bold text-gray-600">닫기</button>
+              <button onClick={()=>setShowPI(false)} className="w-full mt-5 py-3 rounded-2xl bg-gray-100 text-sm font-bold text-gray-600">닫기</button>
             </div>
           </div>
         </>
@@ -612,7 +625,6 @@ export default function GroupHome() {
               <div className="bg-white rounded-3xl p-5 shadow-sm border border-gray-50">
                 <div className="flex items-center justify-between mb-3">
                   <p className="text-sm font-black text-gray-900">📊 그룹 전체 밸런스</p>
-                  <span className="text-[10px] text-gray-400">참고용 · 팀 아님</span>
                 </div>
                 <div className="flex items-center gap-4">
                   <MiniDonut ratioPct={avgRatioPct}
@@ -635,13 +647,6 @@ export default function GroupHome() {
                       </div>
                     ))}
                   </div>
-                </div>
-                {/* 등급 라벨 — 다른 결과 화면과 동일한 표현을 재사용해 숫자만으로는 알기 어려운
-                    "이 점수가 좋은 편인지"를 바로 알 수 있게 함 */}
-                <div className="flex items-center justify-between pt-3 mt-3 border-t border-gray-50">
-                  <p className="text-xs text-gray-500">전체 밸런스</p>
-                  <span className="text-sm font-black px-3 py-1 rounded-full text-white"
-                    style={{ backgroundColor: scoreLabel.color }}>{scoreLabel.label}</span>
                 </div>
               </div>
             )}

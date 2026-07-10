@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import useGroupStore from '../store/useGroupStore';
 import { TYPES }     from '../data/questions';
+import { buildPersona } from '../utils/persona';
 
 export default function SupplementSelect() {
   const navigate       = useNavigate();
@@ -166,7 +167,8 @@ export default function SupplementSelect() {
                 const isMe   = myMember && m.id === myMember.id;  // ★ 현재 사용자 여부
                 const isSel  = selected.includes(m.id);
                 const isDis  = !isSel && !isMe && count >= limit;  // ★ 본인은 항상 선택 가능
-                const type   = TYPES[m.profile?.typeKey];
+                const sc     = m.profile?.scores || {};
+                const persona = buildPersona({ A:sc.추진||0, B:sc.소통||0, C:sc.탐구||0, D:sc.실행||0 });
                 return (
                   <button key={m.id}
                     onClick={() => toggle(m.id)}
@@ -210,12 +212,10 @@ export default function SupplementSelect() {
                           <span className="text-[10px] bg-emerald-100 text-emerald-600
                             px-1.5 py-0.5 rounded-full font-bold">나</span>
                         )}
-                        {type && (
-                          <span className="text-[10px] px-1.5 py-0.5 rounded-full font-semibold"
-                            style={{ color: type.color, backgroundColor: type.bg }}>
-                            {type.emoji} {type.name}
-                          </span>
-                        )}
+                        <span className="text-[10px] px-1.5 py-0.5 rounded-full font-semibold
+                          bg-gray-100 text-gray-600">
+                          {persona.emoji} {persona.name}
+                        </span>
                       </div>
                       <div className="flex flex-wrap gap-1">
                         {(m.profile?.domains||[]).map(d => (

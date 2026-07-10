@@ -10,25 +10,16 @@ import { TYPES } from '../../data/questions';
 import { buildTabRecommendations, withI } from '../../utils/balanceScoring';
 import { buildPersona, getAllPersonas, getPersonaRatio } from '../../utils/persona';
 
-/* ── 나의 Persona 산출 근거 설명 (실제 typeRatio 기반) ── */
-function describeMyPersona(persona, typeRatio) {
-  const sorted = Object.entries(typeRatio).filter(([, v]) => v > 0).sort((a, b) => b[1] - a[1]);
-  const [k1, v1] = sorted[0] || ['A', 0];
-  const [k2, v2] = sorted[1] || [null, 0];
-  const n1 = TYPES[k1]?.name;
-  const n2 = k2 ? TYPES[k2]?.name : null;
-
-  if (persona.type === 'balanced') {
-    return `당신은 네 가지 성향이 비슷한 비율로 균형을 이루고 있으며, 그중 ${n1}(${v1}%)이 가장 높게 나타났습니다.`;
-  }
-  if (persona.type === 'dual') {
-    return `당신은 ${n1} ${v1}%, ${n2} ${v2}%로 두 성향이 비슷하게 나타났습니다.`;
-  }
-  return `당신은 ${n1} 성향이 ${v1}%로 가장 높게 나타났습니다.`;
-}
+/* ── Persona 목록 표시용 카테고리 정의 (buildPersona()의 판정 기준과 동일) ── */
+const PERSONA_CATEGORIES = [
+  { type:'single',   label:'단일 성향형', rule:'1위 성향이 40% 이상이면서 2위와 10%p 이상 차이 날 때 부여됩니다.' },
+  { type:'dual',     label:'조합형',      rule:'1위와 2위 성향의 차이가 5%p 이하일 때 부여됩니다.' },
+  { type:'balanced', label:'균형형',      rule:'0%보다 큰 성향이 3개 이상이고, 최댓값과 최솟값의 차이가 15%p 미만일 때 부여됩니다.' },
+];
 
 /* ══ ⓘ Bottom Sheet: Persona 생성 기준 ══════════════════ */
-function PersonaInfoSheet({ onClose, persona, typeRatio }) {
+function PersonaInfoSheet({ onClose, persona }) {
+  const allPersonas = getAllPersonas();
   return (
     <>
       <div className="fixed inset-0 z-40 bg-black/30" onClick={onClose}/>
@@ -36,7 +27,7 @@ function PersonaInfoSheet({ onClose, persona, typeRatio }) {
         style={{ animation:'sheetUp 0.25s cubic-bezier(0.32,0.72,0,1)' }}>
         <style>{`@keyframes sheetUp{from{transform:translateY(100%);opacity:.6}to{transform:translateY(0);opacity:1}}`}</style>
         <div className="bg-white rounded-t-3xl pt-3 pb-10 px-5 shadow-2xl"
-          style={{ maxHeight:'80vh', overflowY:'auto' }}>
+          style={{ maxHeight:'85vh', overflowY:'auto' }}>
           <div className="w-10 h-1 bg-gray-200 rounded-full mx-auto mb-5"/>
           <p className="text-base font-black text-gray-900 mb-4">
             Persona는 어떻게 결정되나요?
@@ -60,18 +51,37 @@ function PersonaInfoSheet({ onClose, persona, typeRatio }) {
             ))}
           </div>
           <p className="text-sm text-gray-600 leading-relaxed mb-4">
-            10문항 결과를 합산하여 각 성향의 비율을 계산한 뒤, 가장 높은 성향과
-            두 번째 성향의 조합을 기반으로 TeamFit Persona가 생성됩니다.
+            10문항 결과를 합산해 네 성향의 비율을 계산한 뒤, 아래 기준에 따라 총 11가지 Persona 중 하나가 결정됩니다.
           </p>
-          <div className="bg-gray-50 rounded-2xl p-4 border border-gray-100">
-            <p className="text-xs font-bold text-gray-500 mb-1">나의 경우</p>
-            <p className="text-sm text-gray-700 leading-relaxed mb-1">
-              {describeMyPersona(persona, typeRatio)}
-            </p>
-            <p className="text-sm text-gray-700 leading-relaxed">
-              그 결과 <span className="font-black">{persona.emoji} {persona.name} ({persona.en})</span>{' '}
-              Persona가 부여됐습니다.
-            </p>
+          <div className="space-y-4">
+            {PERSONA_CATEGORIES.map(cat => (
+              <div key={cat.type}>
+                <p className="text-xs font-black text-gray-700 mb-1">{cat.label}</p>
+                <p className="text-[11px] text-gray-400 leading-relaxed mb-2">{cat.rule}</p>
+                <div className="space-y-1.5">
+                  {allPersonas.filter(p => p.type === cat.type).map(p => {
+                    const isMine = p.key === persona.key;
+                    return (
+                      <div key={p.key}
+                        className={`flex items-center gap-2 px-3 py-2 rounded-xl border ${
+                          isMine ? 'bg-emerald-50 border-emerald-200' : 'bg-gray-50 border-transparent'
+                        }`}>
+                        <span className="text-base flex-shrink-0">{p.emoji}</span>
+                        <div className="flex-1 min-w-0">
+                          <p className={`text-xs font-bold ${isMine ? 'text-emerald-700' : 'text-gray-700'}`}>
+                            {p.name} <span className="text-[10px] font-normal text-gray-400">{p.en}</span>
+                          </p>
+                          <p className="text-[10px] text-gray-400 truncate">{p.strengths.slice(0,2).join(' · ')}</p>
+                        </div>
+                        {isMine && (
+                          <span className="text-[9px] font-black text-emerald-500 flex-shrink-0">✔ 나의 Persona</span>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
           </div>
           <button onClick={onClose}
             className="w-full mt-5 py-3 rounded-2xl bg-gray-100 text-sm font-bold text-gray-600">
@@ -326,7 +336,7 @@ export default function PersonaResultView({
     </div>
 
       {/* ⓘ Bottom Sheets */}
-      {showPersonaInfo && <PersonaInfoSheet onClose={() => setShowPersonaInfo(false)} persona={myPersona} typeRatio={typeRatio}/>}
+      {showPersonaInfo && <PersonaInfoSheet onClose={() => setShowPersonaInfo(false)} persona={myPersona}/>}
       {showCompatInfo  && <MatchedPersonaInfoSheet onClose={() => setShowCompatInfo(false)}/>}
     </>
   );
