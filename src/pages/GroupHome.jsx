@@ -250,9 +250,9 @@ function InlineMyProfile({ member }) {
             <div className="bg-white rounded-t-3xl pt-3 pb-10 px-5 shadow-2xl" style={{maxHeight:'80vh',overflowY:'auto'}}>
               <div className="w-10 h-1 bg-gray-200 rounded-full mx-auto mb-5"/>
               <p className="text-base font-black text-gray-900 mb-4">잘 맞는 Persona는 어떻게 선정되나요?</p>
-              <p className="text-sm text-gray-600 leading-relaxed mb-4">잘 맞는 Persona는 내 성향 비율과 팀 선호 스타일을 기준으로, 함께 협업했을 때 시너지가 날 가능성이 높은 Persona를 추천한 결과입니다.</p>
-              <p className="text-sm text-gray-600 leading-relaxed mb-4">내가 강하게 가진 성향과 보완이 필요한 성향을 함께 고려하여 협업 방식이 잘 맞거나 서로의 부족한 부분을 채워줄 수 있는 Persona를 우선 추천합니다.</p>
-              <p className="text-xs text-gray-500 leading-relaxed">이 결과는 실제 팀원 추천 시 Persona 궁합을 판단하는 참고 기준으로 사용됩니다.</p>
+              <p className="text-sm text-gray-600 leading-relaxed mb-4">잘 맞는 Persona는 내 성향 비율과 협업 방식이 가장 비슷한 Persona 유형을 찾아 보여드리는 결과입니다.</p>
+              <p className="text-sm text-gray-600 leading-relaxed mb-4">TeamFit의 11가지 Persona는 각각 대표적인 성향 비율을 가지고 있어요. 내 성향 비율과 이 대표 비율을 하나씩 비교해서, 협업 스타일이 가장 닮은 상위 2개 유형을 추천합니다.</p>
+              <p className="text-xs text-gray-500 leading-relaxed">이 비교는 실제 팀원을 추천할 때와 동일한 기준을 사용해요. 그래서 여기서 추천된 Persona와 실제로 잘 맞는 팀원 사이에 기준이 어긋나지 않습니다.</p>
               <button onClick={()=>setShowCI(false)} className="w-full mt-4 py-3 rounded-2xl bg-gray-100 text-sm font-bold text-gray-600">닫기</button>
             </div>
           </div>

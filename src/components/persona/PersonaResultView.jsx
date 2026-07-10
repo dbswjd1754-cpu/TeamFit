@@ -107,15 +107,17 @@ function MatchedPersonaInfoSheet({ onClose }) {
             잘 맞는 Persona는 어떻게 선정되나요?
           </p>
           <p className="text-sm text-gray-600 leading-relaxed mb-4">
-            잘 맞는 Persona는 내 성향 비율과 팀 선호 스타일을 기준으로,
-            함께 협업했을 때 시너지가 날 가능성이 높은 Persona를 추천한 결과입니다.
+            잘 맞는 Persona는 내 성향 비율과 협업 방식이 가장 비슷한
+            Persona 유형을 찾아 보여드리는 결과입니다.
           </p>
           <p className="text-sm text-gray-600 leading-relaxed mb-4">
-            내가 강하게 가진 성향과 보완이 필요한 성향을 함께 고려하여
-            협업 방식이 잘 맞거나 서로의 부족한 부분을 채워줄 수 있는 Persona를 우선 추천합니다.
+            TeamFit의 11가지 Persona는 각각 대표적인 성향 비율을 가지고 있어요.
+            내 성향 비율과 이 대표 비율을 하나씩 비교해서, 협업 스타일이
+            가장 닮은 상위 2개 유형을 추천합니다.
           </p>
           <p className="text-xs text-gray-500 leading-relaxed">
-            이 결과는 실제 팀원 추천 시 Persona 궁합을 판단하는 참고 기준으로 사용됩니다.
+            이 비교는 실제 팀원을 추천할 때와 동일한 기준을 사용해요. 그래서
+            여기서 추천된 Persona와 실제로 잘 맞는 팀원 사이에 기준이 어긋나지 않습니다.
           </p>
           <button onClick={onClose}
             className="w-full mt-5 py-3 rounded-2xl bg-gray-100 text-sm font-bold text-gray-600">
@@ -182,13 +184,14 @@ function calcMatchedPersonas(me, myPersonaKey) {
   }));
 }
 
-/* ── 추천 이유 생성 ── */
-function genMatchReason(myPersona, matchedPersona, breakdown) {
-  const myStrengths   = myPersona.strengths.slice(0, 2).join(', ');
+/* ── 추천 이유 생성 — 실제 판정 기준(협업 스타일 유사도)을 그대로 문장으로 설명 ── */
+function genMatchReason(matchedPersona, breakdown) {
+  const sim = Math.round(breakdown?.styleSim || 0);
   const theirStrengths = matchedPersona.strengths.slice(0, 2).join(', ');
-  return `당신은 ${withI(myStrengths)} 강합니다. ` +
-    `반면 추천된 Persona는 ${withI(theirStrengths)} 강하기 때문에 ` +
-    `함께 협업하면 팀 밸런스가 좋아질 것으로 예상됩니다.`;
+  const simText = sim >= 85 ? '매우 비슷해요' : sim >= 60 ? '비슷한 편이에요' : '어느 정도 닮아 있어요';
+  return `협업 스타일 유사도가 ${sim}%로 ${simText}. ` +
+    `특히 ${withI(theirStrengths)} 강점이라, 비슷한 방식으로 협업하며 ` +
+    `자연스럽게 호흡이 맞을 것으로 예상됩니다.`;
 }
 
 export default function PersonaResultView({
@@ -319,7 +322,7 @@ export default function PersonaResultView({
                   </div>
                   {/* 추천 이유 */}
                   <p className="text-[11px] text-gray-500 leading-relaxed bg-white rounded-xl px-2.5 py-2">
-                    {genMatchReason(myPersona, persona, breakdown)}
+                    {genMatchReason(persona, breakdown)}
                   </p>
                 </div>
               ))}
