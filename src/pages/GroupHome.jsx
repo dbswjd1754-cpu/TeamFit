@@ -371,14 +371,14 @@ function InlineMyProfile({ member }) {
         <span className="text-sm font-bold text-gray-700">{completedDate}</span>
       </div>
 
-      {/* ★ 성향 다시 검사하기 — 이름/도메인/우선순위는 유지한 채 검사만 재시작 */}
+      {/* ★ 성향 다시 검사하기 — 이름은 유지, 도메인 선택부터 다시 진행 (기존 선택값은 프리필) */}
       <button
         onClick={() => {
           const { setName, setDomains, setPriority } = useUserStore.getState();
           setName(member.name);
           setDomains(p.domains || []);
           setPriority(p.priority || '');
-          navigate('/onboarding/test');
+          navigate('/onboarding/domain');
         }}
         className="w-full py-3 rounded-2xl font-bold text-sm text-gray-500
           bg-white border-2 border-gray-100 hover:border-gray-200 hover:shadow-sm

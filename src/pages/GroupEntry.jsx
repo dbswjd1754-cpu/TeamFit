@@ -120,13 +120,13 @@ export default function GroupEntry() {
     routeAfterGroupEntry(navigate);
   };
 
-  /* ★ 그룹 만들기 완료 화면에서 "성향 다시 분석" — 이름/도메인/우선순위는 유지 */
+  /* ★ 그룹 만들기 완료 화면에서 "성향 다시 분석" — 이름은 유지, 도메인 선택부터 다시 진행 */
   const handleRetakeFromCreate = () => {
     const { setName, setDomains, setPriority } = useUserStore.getState();
     setName(currentName);
     setDomains(myProfile?.domains || []);
     setPriority(myProfile?.priority || '');
-    navigate('/onboarding/test');
+    navigate('/onboarding/domain');
   };
 
   /* ── ② 코드 입력 ── */

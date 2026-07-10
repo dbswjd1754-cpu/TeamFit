@@ -37,7 +37,7 @@ export default function ProfileResult() {
     setName(currentName);
     setDomains(profile.domains || []);
     setPriority(profile.priority || '');
-    navigate('/onboarding/test');
+    navigate('/onboarding/domain');
   };
 
   if (loading || !profile) return (
