@@ -6,6 +6,7 @@
  * ④ 부족한 성향 추천
  */
 import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate, useLocation } from 'react-router-dom';
 import useGroupStore from '../store/useGroupStore';
 import useUserStore  from '../store/useUserStore';
@@ -224,7 +225,10 @@ function MatchDetailSheet({ rec, onClose, teamMembers }) {
   // ── AI 추천 이유 — 리스트 카드와 동일한 후보 개인별 근거를 그대로 사용 ──
   const reasons = (rec.aiSummary || '').split(' + ').filter(Boolean).slice(0, 4);
 
-  return (
+  // ★ createPortal로 body에 직접 렌더링 — 카드 리스트 fade 전환용 transform이 조상에
+  //   걸려 있으면 position:fixed가 뷰포트가 아닌 그 조상 기준으로 계산되어 스크롤 위치에
+  //   따라 시트가 화면 밖으로 밀려나는 문제를 방지
+  return createPortal(
     <>
       <div className="fixed inset-0 z-40 bg-black/40"
         style={{ backdropFilter:'blur(2px)' }} onClick={onClose} />
@@ -522,7 +526,8 @@ function MatchDetailSheet({ rec, onClose, teamMembers }) {
 
         </div>
       </div>
-    </>
+    </>,
+    document.body
   );
 }
 

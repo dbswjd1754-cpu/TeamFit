@@ -7,6 +7,7 @@
  * - 기존 컴포넌트·로직·라우터 변경 없음
  */
 import { useEffect, useState, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate, useLocation } from 'react-router-dom';
 import useGroupStore from '../store/useGroupStore';
 import useUserStore  from '../store/useUserStore';
@@ -185,8 +186,10 @@ function InlineMyProfile({ member }) {
   return (
     <div className="space-y-3">
 
-      {/* ⓘ 시트 상태 */}
-      {showPI && (
+      {/* ⓘ 시트 상태 — createPortal로 body에 직접 렌더링
+          (탭 전환 애니메이션용 transform이 조상에 걸려 있으면 position:fixed가
+          뷰포트가 아닌 그 조상 기준으로 계산되어 스크롤 위치에 따라 화면 밖으로 밀려남) */}
+      {showPI && createPortal(
         <>
           <div className="fixed inset-0 z-40 bg-black/30" onClick={()=>setShowPI(false)}/>
           <div className="fixed bottom-0 left-0 right-0 z-50 max-w-md mx-auto"
@@ -236,9 +239,10 @@ function InlineMyProfile({ member }) {
               <button onClick={()=>setShowPI(false)} className="w-full mt-5 py-3 rounded-2xl bg-gray-100 text-sm font-bold text-gray-600">닫기</button>
             </div>
           </div>
-        </>
+        </>,
+        document.body
       )}
-      {showCI && (
+      {showCI && createPortal(
         <>
           <div className="fixed inset-0 z-40 bg-black/30" onClick={()=>setShowCI(false)}/>
           <div className="fixed bottom-0 left-0 right-0 z-50 max-w-md mx-auto"
@@ -252,7 +256,8 @@ function InlineMyProfile({ member }) {
               <button onClick={()=>setShowCI(false)} className="w-full mt-4 py-3 rounded-2xl bg-gray-100 text-sm font-bold text-gray-600">닫기</button>
             </div>
           </div>
-        </>
+        </>,
+        document.body
       )}
 
       {/* ① 나의 Persona 카드 */}
