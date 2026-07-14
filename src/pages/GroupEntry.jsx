@@ -49,15 +49,27 @@ export default function GroupEntry() {
   const signInWithGoogle = useAuthStore(s => s.signInWithGoogle);
   const signOutUser      = useAuthStore(s => s.signOutUser);
   const claimName         = useAuthStore(s => s.claimName);
+  const pendingClaimCheck = useAuthStore(s => s.pendingClaimCheck);
   const [claimInput, setClaimInput] = useState('');
   const [claimError, setClaimError] = useState('');
-  const [claimMode,  setClaimMode]  = useState(null); // null | 'existing' | 'new'
+  const [claimMode,  setClaimMode]  = useState(null); // null | 'ask' | 'existing' | 'new'
+  const [signInError, setSignInError] = useState('');
 
   // 로그인 계정에 이미 연결된 이름이 있으면 자동으로 세션의 currentName에 반영
   // (기기를 바꿔도 같은 계정으로 로그인하면 다시 이름을 입력하지 않아도 됨)
   useEffect(() => {
     if (linkedName && linkedName !== currentName) setCurrentName(linkedName);
   }, [linkedName]);
+
+  // 팝업이 막혀 리디렉션 방식으로 로그인하고 돌아온 경우 — 페이지가 완전히
+  // 새로고침되어 signInWithGoogle()의 반환값을 못 받으므로, store에 남겨둔
+  // 신호를 이어받아 "이전에 쓰던 이름이 있나요?" 안내를 띄운다
+  useEffect(() => {
+    if (pendingClaimCheck) {
+      setClaimMode('ask');
+      useAuthStore.setState({ pendingClaimCheck: false });
+    }
+  }, [pendingClaimCheck]);
 
   // 'home' | 'create-name' | 'create' | 'join'
   const [screen, setScreen] = useState('home');
@@ -115,8 +127,11 @@ export default function GroupEntry() {
     routeAfterGroupEntry(navigate, { replace: true });
   }, []);
 
-  /* ── 구글 로그인 / 로그아웃 / 이름 연결(claim) ── */
+  /* ── 구글 로그인 / 로그아웃 / 이름 연결(claim) ──
+     실패해도 콘솔에만 남기지 않고 화면에 보이게 — 안 그러면 "버튼 눌러도
+     아무 반응 없음"처럼 보여서 사용자가 원인을 알 수 없음 */
   const handleGoogleSignIn = async () => {
+    setSignInError('');
     try {
       const res = await signInWithGoogle();
       if (res && !res.linkedName) {
@@ -124,7 +139,12 @@ export default function GroupEntry() {
         setClaimMode('ask');
       }
     } catch (e) {
-      console.warn('[GroupEntry] 구글 로그인 실패:', e.message);
+      console.warn('[GroupEntry] 구글 로그인 실패:', e.code, e.message);
+      setSignInError(
+        e?.code === 'auth/unauthorized-domain'
+          ? '이 주소에서는 구글 로그인이 아직 허용되지 않았어요. 관리자에게 알려주세요.'
+          : '로그인에 실패했어요. 카카오톡 등 앱 내 브라우저가 아닌 일반 브라우저(Safari/Chrome)에서 열어주세요.'
+      );
     }
   };
 
@@ -270,6 +290,9 @@ export default function GroupEntry() {
                 </svg>
                 <span className="text-sm font-bold text-gray-700">Google로 계속하기</span>
               </button>
+            )}
+            {signInError && (
+              <p className="text-[11px] text-red-400 leading-relaxed -mt-1.5 mb-1 px-1">{signInError}</p>
             )}
 
             {authUser && (
