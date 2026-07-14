@@ -16,6 +16,7 @@ import useUserStore  from '../store/useUserStore';
 import useAuthStore  from '../store/useAuthStore';
 import { getUserProfileFromDB, saveGroupInfo } from '../store/groupDB';
 import { buildPersona } from '../utils/persona';
+import { isAdminUser } from '../utils/admin';
 import { routeAfterGroupEntry } from '../utils/profileRouting';
 import MyGroupsSheet from '../components/groups/MyGroupsSheet';
 
@@ -283,6 +284,25 @@ export default function GroupEntry() {
                   로그아웃
                 </button>
               </div>
+            )}
+
+            {/* ★ 관리자 전용 — 등록한 계정 이메일이 관리자 목록에 있을 때만 노출 */}
+            {isAdminUser(authUser) && (
+              <button
+                onClick={() => navigate('/admin')}
+                className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl border-2 border-purple-100
+                  bg-purple-50 text-left hover:border-purple-300 hover:shadow-sm
+                  active:scale-[0.98] transition-all duration-150 mb-1"
+              >
+                <span className="text-lg flex-shrink-0">🛠️</span>
+                <div className="flex-1 min-w-0">
+                  <p className="font-black text-sm text-purple-700">관리자 모드</p>
+                  <p className="text-[11px] text-purple-400">전체 그룹과 멤버를 조회해요</p>
+                </div>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" className="text-purple-300 flex-shrink-0">
+                  <path d="M9 18L15 12L9 6" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </button>
             )}
 
             {/* 처음 로그인한 계정 — 이전에 쓰던 이름이 있는지 확인 */}

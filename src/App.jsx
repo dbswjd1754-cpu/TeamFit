@@ -20,6 +20,7 @@ import AnalysisLoading   from './pages/AnalysisLoading';
 import BalanceCount      from './pages/BalanceCount';
 import BalanceSelect     from './pages/BalanceSelect';
 import BalanceResult     from './pages/BalanceResult';
+import AdminDashboard    from './pages/AdminDashboard';
 
 export default function App() {
   return (
@@ -35,6 +36,9 @@ export default function App() {
 
         {/* 내 프로필 보기 (그룹 무관 — 전역 Persona) */}
         <Route path="/profile"                element={<ProfileResult />} />
+
+        {/* 관리자 전용 — 전체 그룹/멤버 조회 */}
+        <Route path="/admin"                  element={<AdminDashboard />} />
 
         {/* 온보딩 */}
         <Route path="/onboarding/name"        element={<OnboardingName />} />

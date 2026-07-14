@@ -15,7 +15,7 @@
 import { db } from '../firebase';
 import {
   doc, getDoc, setDoc, getDocs, deleteDoc,
-  collection, onSnapshot, serverTimestamp,
+  collection, collectionGroup, onSnapshot, serverTimestamp,
 } from 'firebase/firestore';
 
 const TYPE_NAMES = { A:'추진형', B:'소통형', C:'탐구형', D:'실행형' };
@@ -352,6 +352,49 @@ export async function getGroupInfo(code) {
 
   // ★ 기존(그룹 이름 필드 도입 전) 그룹과의 호환 — 문서 없으면 null 반환, 호출부에서 groupCode로 대체 표시
   return lsGetGroupInfo(code);
+}
+
+// ── 관리자 전용: 지금까지 생성된 모든 그룹 목록 ──────
+// 본인이 참여(등록)하지 않은 그룹도 포함해서 전체 조회
+// (localStorage-only 모드에서는 이 기기가 실제로 접속했던 그룹만 보임 — 서버 저장소가 없어 전체 목록 자체가 없음)
+//
+// ★ groups/{code} 루트 문서(이름/생성일)만으로는 부족함 — "그룹 코드 입력"으로
+//   처음 만들어진 그룹은 이 루트 문서가 없을 수 있음(멤버 서브컬렉션만 존재).
+//   그래서 collectionGroup으로 모든 members 서브컬렉션을 직접 훑어 그룹 코드를 역산하고,
+//   groups/{code} 루트 문서가 있으면 이름/생성일만 덧붙인다.
+export async function getAllGroupsFromDB() {
+  if (isFirebaseReady()) {
+    try {
+      const [metaSnap, membersSnap] = await Promise.all([
+        getDocs(collection(db, 'groups')),
+        getDocs(collectionGroup(db, 'members')),
+      ]);
+
+      const metaByCode = {};
+      metaSnap.docs.forEach(d => { metaByCode[d.id] = d.data(); });
+
+      const countByCode = {};
+      membersSnap.docs.forEach(d => {
+        const code = d.data().groupCode;
+        if (code) countByCode[code] = (countByCode[code] || 0) + 1;
+      });
+
+      const allCodes = new Set([...Object.keys(metaByCode), ...Object.keys(countByCode)]);
+      return [...allCodes].map(code => ({
+        groupCode:   code,
+        groupName:   metaByCode[code]?.groupName || '',
+        createdAt:   metaByCode[code]?.createdAt || null,
+        memberCount: countByCode[code] || 0,
+      }));
+    } catch (e) {
+      console.warn('[groupDB] 전체 그룹 목록 조회 실패:', e.message);
+    }
+  }
+
+  try {
+    const all = JSON.parse(localStorage.getItem(LS_GROUPINFO_KEY) || '{}');
+    return Object.values(all);
+  } catch { return []; }
 }
 
 // ── 로그인 계정 ↔ 기존 이름(name) 연결 ─────────
