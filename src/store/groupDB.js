@@ -14,7 +14,7 @@
 
 import { db } from '../firebase';
 import {
-  doc, getDoc, setDoc, getDocs,
+  doc, getDoc, setDoc, getDocs, deleteDoc,
   collection, onSnapshot, serverTimestamp,
 } from 'firebase/firestore';
 
@@ -118,6 +118,25 @@ export async function saveMemberToDB(groupCode, rawMember) {
 
   lsSaveMember(groupCode, member);
   return member;
+}
+
+// ── Firestore: 멤버 삭제 (그룹 나가기 — 해당 그룹에서 내 데이터만 제거) ──
+export async function deleteMemberFromDB(groupCode, memberId) {
+  if (!groupCode || !memberId) return;
+
+  const all = lsReadAll();
+  if (all[groupCode]?.members?.[memberId]) {
+    delete all[groupCode].members[memberId];
+    lsWriteAll(all);
+  }
+
+  if (isFirebaseReady()) {
+    try {
+      await deleteDoc(doc(db, 'groups', groupCode, 'members', memberId));
+    } catch (e) {
+      console.warn('[groupDB] 멤버 삭제 실패:', e.message);
+    }
+  }
 }
 
 // ── Firestore: 멤버 목록 조회 ────────────────
@@ -349,6 +368,24 @@ export async function recordGroupAccess(name, { groupCode, groupName }) {
     groups.push({ groupCode, groupName: groupName || '', joinedAt: now, lastAccessAt: now });
   }
   await saveUserProfileToDB(name, { myGroups: groups });
+}
+
+// 내 그룹 목록에서 특정 그룹 제거
+async function removeGroupFromMyGroups(name, groupCode) {
+  if (!name || !groupCode) return;
+  const existing = (await getUserProfileFromDB(name)) || {};
+  const groups = (Array.isArray(existing.myGroups) ? existing.myGroups : [])
+    .filter(g => g.groupCode !== groupCode);
+  await saveUserProfileToDB(name, { myGroups: groups });
+}
+
+// ── 그룹 나가기 — 해당 그룹의 내 멤버 데이터 삭제 + 내 그룹 목록에서 제거 ──
+// (그룹 자체나 다른 멤버의 데이터는 건드리지 않음 — 나가는 사람의 흔적만 지움)
+export async function leaveGroup(name, groupCode) {
+  if (!name || !groupCode) return;
+  const memberId = `${groupCode}_${name}`;
+  await deleteMemberFromDB(groupCode, memberId);
+  await removeGroupFromMyGroups(name, groupCode);
 }
 
 // 동기 조회 (캐시 우선) — 시작 화면 등에서 즉시 렌더용
