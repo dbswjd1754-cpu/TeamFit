@@ -354,6 +354,80 @@ export async function getGroupInfo(code) {
   return lsGetGroupInfo(code);
 }
 
+// ── 로그인 계정 ↔ 기존 이름(name) 연결 ─────────
+// authLinks/{uid} = { name, linkedAt }                (uid → name, 로그인 시 자동으로 어떤 이름인지 찾는 용도)
+// profiles/{name}.linkedUid = uid                      (name → uid, 다른 계정이 같은 이름을 가로채지 못하게 막는 용도)
+const LS_AUTHLINK_KEY = 'teamfit_authlink_v1';
+
+function lsGetAuthLink(uid) {
+  if (!uid) return null;
+  try { return JSON.parse(localStorage.getItem(LS_AUTHLINK_KEY) || '{}')[uid] || null; } catch { return null; }
+}
+function lsSaveAuthLink(uid, link) {
+  if (!uid) return;
+  try {
+    const all = JSON.parse(localStorage.getItem(LS_AUTHLINK_KEY) || '{}');
+    all[uid] = link;
+    localStorage.setItem(LS_AUTHLINK_KEY, JSON.stringify(all));
+  } catch {}
+}
+
+// 이 로그인 계정(uid)이 이미 어떤 이름과 연결되어 있는지 조회
+export async function getLinkedNameForUid(uid) {
+  if (!uid) return null;
+
+  if (isFirebaseReady()) {
+    try {
+      const snap = await getDoc(doc(db, 'authLinks', uid));
+      if (snap.exists()) {
+        const data = snap.data();
+        lsSaveAuthLink(uid, data);
+        return data.name || null;
+      }
+      return null;
+    } catch (e) {
+      console.warn('[groupDB] 계정 연결 조회 실패, localStorage fallback:', e.message);
+    }
+  }
+
+  return lsGetAuthLink(uid)?.name || null;
+}
+
+// 이 이름이 이미 "다른" 계정에 연결되어 있는지 확인 (있으면 그 uid 반환)
+export async function getLinkedUidForName(name) {
+  if (!name) return null;
+  const profile = await getUserProfileFromDB(name);
+  return profile?.linkedUid || null;
+}
+
+// 로그인 계정과 이름을 연결(claim) — 기존 이름 데이터는 그대로 두고 연결만 추가
+export async function linkAuthToName(uid, name) {
+  if (!uid || !name) return;
+  const link = { name, linkedAt: Date.now() };
+  lsSaveAuthLink(uid, link);
+
+  if (isFirebaseReady()) {
+    try {
+      await setDoc(doc(db, 'authLinks', uid), { ...link, updatedAt: serverTimestamp() });
+    } catch (e) {
+      console.warn('[groupDB] 계정 연결 저장 실패 (로컬은 저장됨):', e.message);
+    }
+  }
+
+  // profiles/{name} 쪽에도 역방향 연결 기록 (다른 계정이 같은 이름을 가로채지 못하도록)
+  await saveUserProfileToDB(name, { linkedUid: uid });
+}
+
+// 로그인 해제 — 계정↔이름 연결 자체는 유지 (다음에 로그인하면 다시 자동 연결됨)
+export function clearAuthLinkCache(uid) {
+  if (!uid) return;
+  try {
+    const all = JSON.parse(localStorage.getItem(LS_AUTHLINK_KEY) || '{}');
+    delete all[uid];
+    localStorage.setItem(LS_AUTHLINK_KEY, JSON.stringify(all));
+  } catch {}
+}
+
 // ── 내 그룹 목록 (profiles/{name}.myGroups) ──────
 // 그룹 생성/참여/재입장 시마다 호출 — 없으면 추가, 있으면 lastAccessAt만 갱신
 export async function recordGroupAccess(name, { groupCode, groupName }) {

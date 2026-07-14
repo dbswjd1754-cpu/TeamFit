@@ -13,6 +13,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import useGroupStore from '../store/useGroupStore';
 import useUserStore  from '../store/useUserStore';
+import useAuthStore  from '../store/useAuthStore';
 import { getUserProfileFromDB, saveGroupInfo } from '../store/groupDB';
 import { buildPersona } from '../utils/persona';
 import { routeAfterGroupEntry } from '../utils/profileRouting';
@@ -37,6 +38,25 @@ export default function GroupEntry() {
   const isEntered      = useGroupStore(s => s.isEntered);
   const currentCode    = useGroupStore(s => s.groupCode);
   const currentName    = useGroupStore(s => s.currentName);
+  const setCurrentName = useGroupStore(s => s.setCurrentName);
+
+  // ── 구글 로그인 (선택 기능) ──
+  const authUser      = useAuthStore(s => s.user);
+  const authReady      = useAuthStore(s => s.authReady);
+  const linkedName     = useAuthStore(s => s.linkedName);
+  const linking        = useAuthStore(s => s.linking);
+  const signInWithGoogle = useAuthStore(s => s.signInWithGoogle);
+  const signOutUser      = useAuthStore(s => s.signOutUser);
+  const claimName         = useAuthStore(s => s.claimName);
+  const [claimInput, setClaimInput] = useState('');
+  const [claimError, setClaimError] = useState('');
+  const [claimMode,  setClaimMode]  = useState(null); // null | 'existing' | 'new'
+
+  // 로그인 계정에 이미 연결된 이름이 있으면 자동으로 세션의 currentName에 반영
+  // (기기를 바꿔도 같은 계정으로 로그인하면 다시 이름을 입력하지 않아도 됨)
+  useEffect(() => {
+    if (linkedName && linkedName !== currentName) setCurrentName(linkedName);
+  }, [linkedName]);
 
   // 'home' | 'create-name' | 'create' | 'join'
   const [screen, setScreen] = useState('home');
@@ -93,6 +113,49 @@ export default function GroupEntry() {
     setGroupCode(qCode);
     routeAfterGroupEntry(navigate, { replace: true });
   }, []);
+
+  /* ── 구글 로그인 / 로그아웃 / 이름 연결(claim) ── */
+  const handleGoogleSignIn = async () => {
+    try {
+      const res = await signInWithGoogle();
+      if (res && !res.linkedName) {
+        // 처음 로그인한 계정 — 이전에 쓰던 이름이 있는지 물어봄
+        setClaimMode('ask');
+      }
+    } catch (e) {
+      console.warn('[GroupEntry] 구글 로그인 실패:', e.message);
+    }
+  };
+
+  const handleSignOut = async () => {
+    await signOutUser();
+    setClaimMode(null);
+    setClaimInput('');
+    setClaimError('');
+  };
+
+  const handleClaimExisting = async () => {
+    const trimmed = claimInput.trim();
+    if (!trimmed) { setClaimError('이름을 입력해주세요'); return; }
+    const res = await claimName(trimmed);
+    if (!res.success) {
+      setClaimError(res.reason === 'taken'
+        ? '이미 다른 계정에 연결된 이름이에요. 다른 이름을 입력해주세요.'
+        : '이름을 확인해주세요.');
+      return;
+    }
+    setCurrentName(trimmed);
+    setClaimMode(null);
+    setClaimError('');
+  };
+
+  const handleClaimAsNew = async () => {
+    const base = (authUser?.displayName || '').trim();
+    if (!base) { setClaimMode('existing'); return; }
+    await claimName(base);
+    setCurrentName(base);
+    setClaimMode(null);
+  };
 
   /* ── ① 팀 만들기 — 그룹 이름부터 입력 ── */
   const handleCreate = () => {
@@ -188,6 +251,81 @@ export default function GroupEntry() {
         {/* ════ 홈 — 진입 방식 선택 ════ */}
         {screen === 'home' && (
           <div className="flex flex-col gap-3">
+
+            {/* ── 구글 로그인 (선택 기능) — 로그인하면 기기를 바꿔도 같은 계정으로
+                 다시 들어왔을 때 이름을 입력하지 않고 이전 데이터에 자동 연결됨 ── */}
+            {authReady && !authUser && (
+              <button
+                onClick={handleGoogleSignIn}
+                className="w-full flex items-center justify-center gap-2.5 px-5 py-3.5 rounded-2xl
+                  border-2 border-gray-100 bg-white hover:border-gray-200 hover:shadow-sm
+                  active:scale-[0.98] transition-all duration-150 mb-1"
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24">
+                  <path fill="#4285F4" d="M23.49 12.27c0-.79-.07-1.54-.19-2.27H12v4.51h6.47c-.29 1.48-1.14 2.73-2.4 3.58v2.98h3.86c2.26-2.08 3.56-5.14 3.56-8.8z"/>
+                  <path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.86-2.98c-1.08.72-2.45 1.15-4.07 1.15-3.13 0-5.78-2.11-6.73-4.96H1.29v3.09C3.26 21.3 7.31 24 12 24z"/>
+                  <path fill="#FBBC05" d="M5.27 14.3A7.2 7.2 0 010 12c0-.79.14-1.56.38-2.3V6.61H1.29A11.98 11.98 0 000 12c0 1.94.46 3.77 1.29 5.39l3.98-3.09z"/>
+                  <path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.94 1.19 15.24 0 12 0 7.31 0 3.26 2.7 1.29 6.61l3.98 3.09C6.22 6.86 8.87 4.75 12 4.75z"/>
+                </svg>
+                <span className="text-sm font-bold text-gray-700">Google로 계속하기</span>
+              </button>
+            )}
+
+            {authUser && (
+              <div className="w-full flex items-center gap-2.5 px-4 py-2.5 rounded-2xl bg-gray-50 mb-1">
+                {authUser.photoURL
+                  ? <img src={authUser.photoURL} alt="" className="w-6 h-6 rounded-full flex-shrink-0"/>
+                  : <div className="w-6 h-6 rounded-full bg-gray-200 flex-shrink-0"/>}
+                <p className="flex-1 min-w-0 text-xs text-gray-500 truncate">
+                  <span className="font-bold text-gray-700">{linkedName || authUser.displayName}</span>님으로 로그인됨
+                </p>
+                <button onClick={handleSignOut} className="text-[11px] text-gray-400 underline underline-offset-2 flex-shrink-0">
+                  로그아웃
+                </button>
+              </div>
+            )}
+
+            {/* 처음 로그인한 계정 — 이전에 쓰던 이름이 있는지 확인 */}
+            {authUser && !linkedName && claimMode && (
+              <div className="w-full bg-blue-50 border border-blue-100 rounded-2xl p-4 mb-1">
+                {claimMode === 'ask' ? (
+                  <>
+                    <p className="text-sm font-bold text-gray-800 mb-1">
+                      {authUser.displayName}님, 환영합니다! 👋
+                    </p>
+                    <p className="text-xs text-gray-500 mb-3 leading-relaxed">
+                      이 계정으로는 처음 로그인하셨어요. 이전에 그룹에서 쓰던 이름이 있다면
+                      연결해서 기존 데이터를 그대로 이어갈 수 있어요.
+                    </p>
+                    <div className="flex gap-2">
+                      <button onClick={() => setClaimMode('existing')}
+                        className="flex-1 py-2.5 rounded-xl bg-white border-2 border-blue-200 text-xs font-bold text-blue-700">
+                        이전에 쓰던 이름이 있어요
+                      </button>
+                      <button onClick={handleClaimAsNew}
+                        className="flex-1 py-2.5 rounded-xl bg-blue-500 text-xs font-bold text-white">
+                        아니요, 새로 시작할게요
+                      </button>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-sm font-bold text-gray-800 mb-2">이전에 쓰던 이름을 입력해주세요</p>
+                    <input type="text" value={claimInput}
+                      onChange={e => { setClaimInput(e.target.value); setClaimError(''); }}
+                      onKeyDown={e => e.key === 'Enter' && handleClaimExisting()}
+                      placeholder="예: 홍길동" maxLength={10} autoFocus
+                      className="w-full bg-white border-2 border-gray-100 rounded-xl px-3.5 py-2.5 text-sm
+                        font-semibold text-gray-800 focus:outline-none focus:border-blue-400 mb-2"/>
+                    {claimError && <p className="text-[11px] text-red-400 mb-2">{claimError}</p>}
+                    <button onClick={handleClaimExisting} disabled={linking}
+                      className="w-full py-2.5 rounded-xl bg-blue-500 text-xs font-bold text-white disabled:opacity-50">
+                      {linking ? '연결하는 중...' : '연결하기'}
+                    </button>
+                  </>
+                )}
+              </div>
+            )}
 
             {/* ★ 내 프로필 보기 — 이미 성향 분석이 완료된 사용자만, 최상단, 카드 느낌으로 차별화 */}
             {myPersona && (
