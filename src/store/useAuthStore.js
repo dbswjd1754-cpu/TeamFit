@@ -114,7 +114,15 @@ if (auth) {
   onAuthStateChanged(auth, async (u) => {
     if (u) {
       const user = { uid: u.uid, displayName: u.displayName, email: u.email, photoURL: u.photoURL };
-      const linkedName = await getLinkedNameForUid(u.uid);
+      // ★ 로그인 자체(Firebase Auth)는 이미 성공했으니, 이름 연결 조회가
+      //   무엇 때문에든 실패해도 user/authReady는 반드시 반영되어야 함 —
+      //   안 그러면 로그인은 성공했는데 화면엔 로그인 버튼이 계속 남아있게 됨
+      let linkedName = null;
+      try {
+        linkedName = await getLinkedNameForUid(u.uid);
+      } catch (e) {
+        console.warn('[useAuthStore] 이름 연결 조회 실패:', e.message);
+      }
       useAuthStore.setState({ user, linkedName, authReady: true });
     } else {
       useAuthStore.setState({ user: null, linkedName: null, authReady: true });
