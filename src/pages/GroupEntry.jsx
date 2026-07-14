@@ -140,11 +140,15 @@ export default function GroupEntry() {
       }
     } catch (e) {
       console.warn('[GroupEntry] 구글 로그인 실패:', e.code, e.message);
-      setSignInError(
-        e?.code === 'auth/unauthorized-domain'
-          ? '이 주소에서는 구글 로그인이 아직 허용되지 않았어요. 관리자에게 알려주세요.'
-          : '로그인에 실패했어요. 카카오톡 등 앱 내 브라우저가 아닌 일반 브라우저(Safari/Chrome)에서 열어주세요.'
-      );
+      const code = e?.code || 'unknown';
+      const hint =
+        code === 'auth/unauthorized-domain' ? ' (이 주소가 아직 승인되지 않았어요)'
+        : code === 'auth/api-key-not-valid.-please-pass-a-valid-api-key.' ? ' (API 키 설정을 확인해주세요)'
+        : code === 'auth/operation-not-allowed' ? ' (Google 로그인이 아직 꺼져있어요)'
+        : ' (카카오톡 등 앱 내 브라우저라면 Safari/Chrome에서 열어주세요)';
+      // ★ 코드를 화면에 그대로 노출 — 원격으로 콘솔을 볼 수 없으니, 이 문구만
+      //   그대로 캡처해서 알려주면 바로 원인을 알 수 있게 하기 위함
+      setSignInError(`로그인 실패: ${code}${hint}`);
     }
   };
 
