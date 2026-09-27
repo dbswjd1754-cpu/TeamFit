@@ -1,0 +1,421 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>오런 온보딩 페이지 시안</title>
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Pretendard", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif; background: #07080a; color: #f2f0ea; }
+  a { color: #ff7a45; text-decoration: none; }
+  a:hover { color: #ffa477; }
+  button { font-family: inherit; cursor: pointer; }
+  .btn { border-radius: 999px; padding: 14px 28px; font-size: 15px; font-weight: 600; border: 1px solid transparent; transition: opacity .15s ease; }
+  .btn:hover { opacity: .88; }
+  .card { background: #101210; border: 1px solid rgba(255,255,255,0.09); border-radius: 16px; transition: transform .2s ease, box-shadow .2s ease; }
+  .card:hover { transform: translateY(-4px); box-shadow: 0 14px 28px rgba(0,0,0,0.45); }
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes ctaPulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(242,98,45,0.38); } 50% { box-shadow: 0 0 0 12px rgba(242,98,45,0); } }
+  .reveal-1 { animation: fadeUp .7s ease both; }
+  .reveal-2 { animation: fadeUp .7s ease .1s both; }
+  .reveal-3 { animation: fadeUp .7s ease .2s both; }
+  .reveal-4 { animation: fadeUp .7s ease .3s both; }
+  .cta-pulse { animation: ctaPulse 2.6s ease-in-out infinite; }
+  .cta-pulse:hover { animation: none; }
+  .logo-mark { transition: transform .2s ease; }
+  .logo-mark:hover { transform: scale(1.04); }
+  .product-card { border: 1px solid rgba(255,255,255,0.12); transition: border-color .2s ease; }
+  .product-card:hover { border-color: #F2622D; }
+  .product-glow { opacity: 0; transition: opacity .25s ease; }
+  .product-card:hover .product-glow { opacity: 1; }
+  .field { display:flex; flex-direction:column; gap:8px; }
+  .field label { font-size:13px; font-weight:700; color:#9aa39c; }
+  .field input, .field textarea { font-family:inherit; font-size:14px; padding:13px 14px; border-radius:10px; border:1px solid rgba(255,255,255,0.14); background:#0d0f0d; color:#f2f0ea; box-sizing:border-box; width: 100%; }
+  .field textarea { resize: vertical; }
+  .marquee-wrap { overflow: hidden; width: 460px; max-width: 90vw; margin: 0 auto; -webkit-mask-image: linear-gradient(90deg, transparent 0%, #000 25%, #000 75%, transparent 100%); mask-image: linear-gradient(90deg, transparent 0%, #000 25%, #000 75%, transparent 100%); }
+  .marquee-track { display: flex; align-items: center; gap: 24px; width: max-content; animation: orun-marquee 22s linear infinite; }
+  .marquee-track img { filter: brightness(0) invert(1); opacity: 0.92; }
+  @keyframes orun-marquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+  #view-business { display: none; }
+</style>
+</head>
+<body>
+
+<div style="width: 100%; max-width: 1440px; margin: 0 auto; box-sizing: border-box; display: flex; flex-direction: column; background: #07080a;">
+
+  <!-- proposal notice -->
+  <div style="width: 100%; box-sizing: border-box; color: #f2f0ea; padding: 10px 64px; font-size: 13px; text-align: center; letter-spacing: .2px; background-color: #0a0a0a">
+    이 화면은 오런(주) 이커머스 파트 채용 지원을 위해 제작한 <strong>온보딩 페이지 아이디어 시안(프로토타입)</strong>입니다 · 실제 서비스 화면이 아닙니다
+  </div>
+
+  <!-- header -->
+  <div style="width: 100%; box-sizing: border-box; display: flex; align-items: center; justify-content: space-between; padding: 20px 64px; border-bottom: 1px solid #e7e0d2; background: #ffffff;">
+    <div class="logo-mark" style="display: flex; align-items: center; cursor: pointer;" onclick="showHome()">
+      <svg width="118" height="38" viewBox="0 0 118 38" aria-label="orun">
+        <path d="M62 27 C71 22 78 14 83 3 C85 12 82 21 74 27 C69 30 65 29 62 27Z" fill="#2E9E46"></path>
+        <path d="M58 32 C68 26 76 17 82 4" stroke="#2E9E46" stroke-width="1.6" fill="none" stroke-linecap="round"></path>
+        <text x="0" y="29" font-family="-apple-system, 'Arial Rounded MT Bold', 'Helvetica Neue', sans-serif" font-weight="800" font-size="27" letter-spacing="-0.5" fill="#F2622D">orun</text>
+      </svg>
+    </div>
+    <div style="display: flex; align-items: center; gap: 36px; font-size: 15px; color: #454f48; font-weight: 500;">
+      <span>회사소개</span>
+      <span>제품소개</span>
+      <span>사업자 안내</span>
+    </div>
+    <div style="display: flex; align-items: center; gap: 10px;">
+      <a href="https://orun.kr/skin-skin1" target="_blank" rel="noopener">
+        <button class="btn" style="background: #ffffff; color: #1c261f; border-color: #cfc6b2;">개인 회원</button>
+      </a>
+      <button class="btn" style="background: #F2622D; color: #ffffff;" onclick="showBusiness()">사업자 회원</button>
+    </div>
+  </div>
+
+  <!-- ========== HOME VIEW ========== -->
+  <div id="view-home">
+
+  <!-- hero -->
+  <div style="width: 100%; box-sizing: border-box; padding: 96px 64px 80px; display: flex; align-items: center; gap: 64px; background-image: linear-gradient(90deg, rgba(10,12,10,0.2) 0%, rgba(10,12,10,0.55) 55%, rgba(10,12,10,0.78) 100%), url('images/2531e2d068522603f4e906a2810d7d64.jpg'); background-size: cover, cover; background-position: center, center; background-repeat: no-repeat, no-repeat; height: 514px">
+    <div style="flex: 1; display: flex; flex-direction: column; align-items: flex-end; gap: 22px;">
+      <div class="reveal-1" style="display:inline-flex; align-items:center; gap:8px; background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.14); color:#f2f0ea; border-radius:999px; padding:8px 16px; font-size:13px; font-weight:700; width:fit-content;">SINCE 1994</div>
+      <div class="reveal-2" style="font-size: 52px; font-weight: 800; line-height: 1.25; letter-spacing: -1px; color: #ffffff; text-align: right;">
+        30년째,<br>당신의 손을 지키는 오런
+      </div>
+      <div class="reveal-3" style="font-size: 17px; line-height: 1.7; color: #ffffff; max-width: 520px; text-align: right;">
+        1994년부터 장갑 하나만 연구해온 오런은, 2013년 제조와 물류를 하나로 통합해 더 빠르고 확실하게 답합니다. 위생장갑부터 산업용 장갑까지 100여 종 — 필요한 장갑이라면, 오런에 다 있습니다.
+      </div>
+      <div class="reveal-4" style="display: flex; gap: 12px; margin-top: 10px;">
+        <button class="btn cta-pulse" style="background: #F2622D; color: #0a0a0a; padding: 16px 30px; font-size: 16px;" onclick="showBusiness()">사업자 회원 문의하기</button>
+        <a href="https://orun.kr/skin-skin1" target="_blank" rel="noopener">
+          <button class="btn" style="background: transparent; color: #ffffff; border-color: rgba(255,255,255,0.5); padding: 16px 30px; font-size: 16px;">공식 홈페이지 바로가기</button>
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- partners marquee -->
+  <div style="box-sizing: border-box; padding: 40px 0; background: #0b0c0a; border-top: 1px solid rgba(255,255,255,0.08); border-bottom: 1px solid rgba(255,255,255,0.08); display: flex; flex-direction: column; gap: 20px; width: 100%">
+    <div style="display:flex; flex-direction:column; gap:4px; align-items:center;">
+      <div style="text-align: center; font-size: 12.5px; letter-spacing: 1px; color: #9aa39c; font-weight: 700;">(주)오런의 브랜드</div>
+    </div>
+    <div class="marquee-wrap">
+      <div class="marquee-track">
+        <!-- set 1 (오런 공식 회사연혁에서 확인된 4개 자체 브랜드) -->
+        <img src="images/55264d700eb61ee17b4c3aafa7540f75.png" alt="후디스" style="height:44px; width:auto;">
+        <img src="images/3e6b37c192b62ad6d09491b8a9a1404f.png" alt="대광" style="height:44px; width:auto;">
+        <img src="images/1afa944cba4c1ee3f4704af092389b0e.png" alt="세라손" style="height:34px; width:auto;">
+        <img src="images/2d8afda5c2ad1c510e7076246070e4bd.png" alt="손사랑" style="height:26px; width:auto;">
+        <!-- set 2 (duplicate for seamless loop) -->
+        <img src="images/55264d700eb61ee17b4c3aafa7540f75.png" alt="후디스" style="height:44px; width:auto;">
+        <img src="images/3e6b37c192b62ad6d09491b8a9a1404f.png" alt="대광" style="height:44px; width:auto;">
+        <img src="images/1afa944cba4c1ee3f4704af092389b0e.png" alt="세라손" style="height:34px; width:auto;">
+        <img src="images/2d8afda5c2ad1c510e7076246070e4bd.png" alt="손사랑" style="height:26px; width:auto;">
+      </div>
+    </div>
+  </div>
+
+  <!-- company intro -->
+  <div style="width: 100%; box-sizing: border-box; padding: 96px 64px; display: flex; flex-direction: column; align-items: center; gap: 56px;">
+    <div style="display:flex; flex-direction:column; gap:22px; align-items:center; text-align:center;">
+      <div style="display: inline-flex; align-items: center; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.16); color: #ff7a45; border-radius: 999px; padding: 9px 20px; font-size: 13px; font-weight: 600; width: fit-content">COMPANY</div>
+      <div style="font-size: 36px; font-weight: 800; color: #f9f7f1">왜 오런이어야 할까요</div>
+    </div>
+    <div style="display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 40px; width: 100%; max-width: 1200px">
+      <div style="display:flex; flex-direction:column; align-items:center; text-align:center; gap:18px;">
+        <svg width="30" height="30" viewBox="0 0 24 24" fill="none"><path d="M4 12l5 5L20 6" stroke="#FF7A45" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+        <div style="font-weight: 700; font-size: 24px; color: #f2f0ea;">국제표준 인증 제품</div>
+        <div style="font-size:14px; color:#8a9088; line-height:1.7; max-width: 260px;">오런라텍스 니트릴 위생장갑은 국제표준화기구(ISO) 인증을 받은 내구력 강화 제품입니다.</div>
+      </div>
+      <div style="display:flex; flex-direction:column; align-items:center; text-align:center; gap:18px;">
+        <svg width="30" height="30" viewBox="0 0 24 24" fill="none"><path d="M3 7h13l3 4v6h-2M3 7v10h2M16 17H8" stroke="#FF7A45" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path><circle cx="7.5" cy="17" r="1.6" stroke="#FF7A45" stroke-width="2"></circle><circle cx="17.5" cy="17" r="1.6" stroke="#FF7A45" stroke-width="2"></circle></svg>
+        <div style="font-weight: 700; font-size: 24px; color: #f2f0ea;">제조·물류 통합(2013)</div>
+        <div style="font-size:14px; color:#8a9088; line-height:1.7; max-width: 260px;">2013년 (주)오런 법인을 설립하며 제조와 물류 시스템을 하나로 통합했습니다.</div>
+      </div>
+      <div style="display:flex; flex-direction:column; align-items:center; text-align:center; gap:18px;">
+        <svg width="30" height="30" viewBox="0 0 24 24" fill="none"><path d="M4 21V8l8-5 8 5v13M9 21v-7h6v7" stroke="#FF7A45" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+        <div style="font-weight: 700; font-size: 24px; color: #f2f0ea;">자체 브랜드 4개</div>
+        <div style="font-size:14px; color:#8a9088; line-height:1.7; max-width: 260px;">후디스 · 대광 · 세라손 · 손사랑 등 20년 이상 된 자체 브랜드를 '오런'으로 통합 운영합니다.</div>
+      </div>
+      <div style="display:flex; flex-direction:column; align-items:center; text-align:center; gap:18px;">
+        <svg width="30" height="30" viewBox="0 0 24 24" fill="none"><path d="M9 12.5l2 2 4-4.5M12 3l7 3v5c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6l7-3Z" stroke="#FF7A45" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+        <div style="font-weight: 700; font-size: 24px; color: #f2f0ea;">기술 특허 보유</div>
+        <div style="font-size:14px; color:#8a9088; line-height:1.7; max-width: 260px;">터치스크린장갑, 고무장갑 항균제조 등 특허 등록과 다수의 디자인등록을 보유하고 있습니다.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- products -->
+  <div style="width: 100%; box-sizing: border-box; padding: 96px 64px; background: #0b0c0a; display: flex; flex-direction: column; align-items: center; gap: 56px;">
+    <div style="display:flex; flex-direction:column; gap:22px; align-items:center; text-align:center;">
+      <div style="display: inline-flex; align-items: center; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.16); color: #ff7a45; border-radius: 999px; padding: 9px 20px; font-size: 13px; font-weight: 600; width: fit-content">PRODUCTS</div>
+      <div style="font-size: 36px; font-weight: 800; color:#f9f7f1;">이런 장갑을 만들어요</div>
+    </div>
+    <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; width: 100%; max-width: 1100px;">
+
+      <div class="product-card" style="position: relative; overflow: hidden; border-radius: 18px; display: flex; align-items: stretch; height: 150px;">
+        <div class="product-glow" style="position: absolute; width: 420px; height: 130px; left: 50%; transform: translateX(-50%); bottom: -55px; background: radial-gradient(ellipse, rgba(242,98,45,0.34) 0%, rgba(242,98,45,0) 70%); pointer-events: none;"></div>
+        <div style="width: 229px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; position: relative; background-color: transparent; height: 160px">
+          <img src="images/0248e5f40ada69999d6e9c4b6a329418.png" style="width: 259px; height: 155px; object-fit: scale-down; padding: 10px; box-sizing: border-box;">
+        </div>
+        <div style="flex: 1; padding: 24px 28px; display: flex; flex-direction: column; justify-content: center; gap: 6px; position: relative;">
+          <div style="font-weight: 800; font-size: 24px; color: #f2f0ea;">기능성장갑</div>
+          <div style="font-size: 13.5px; color: #8a9088; line-height: 1.6">논슬립·터치스크린 등 다양한 기능성 코팅 장갑</div>
+        </div>
+      </div>
+
+      <div class="product-card" style="position: relative; overflow: hidden; border-radius: 18px; display: flex; align-items: stretch; height: 150px;">
+        <div class="product-glow" style="position: absolute; width: 420px; height: 130px; left: 50%; transform: translateX(-50%); bottom: -55px; background: radial-gradient(ellipse, rgba(242,98,45,0.34) 0%, rgba(242,98,45,0) 70%); pointer-events: none;"></div>
+        <div style="width: 229px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; position: relative; height: 160px">
+          <img src="images/110abccdab13403708739ae331ffbed6.png" style="width: 259px; height: 155px; object-fit: scale-down; padding: 10px; box-sizing: border-box;">
+        </div>
+        <div style="flex: 1; padding: 24px 28px; display: flex; flex-direction: column; justify-content: center; gap: 6px; position: relative;">
+          <div style="font-weight: 800; font-size: 24px; color: #f2f0ea;">위생장갑</div>
+          <div style="font-size: 13.5px; color: #8a9088; line-height: 1.6">국제표준화기구 인증, 라텍스·니트릴 다용도 위생장갑</div>
+        </div>
+      </div>
+
+      <div class="product-card" style="position: relative; overflow: hidden; border-radius: 18px; display: flex; align-items: stretch; height: 150px;">
+        <div class="product-glow" style="position: absolute; width: 420px; height: 130px; left: 50%; transform: translateX(-50%); bottom: -55px; background: radial-gradient(ellipse, rgba(242,98,45,0.34) 0%, rgba(242,98,45,0) 70%); pointer-events: none;"></div>
+        <div style="width: 229px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; position: relative; height: 160px">
+          <img src="images/2e7b7ecfa5aa5c87ce216a81bc38f8d2.png" style="width: 259px; height: 155px; object-fit: scale-down; padding: 10px; box-sizing: border-box;">
+        </div>
+        <div style="flex: 1; padding: 24px 28px; display: flex; flex-direction: column; justify-content: center; gap: 6px; position: relative;">
+          <div style="font-weight: 800; font-size: 24px; color: #f2f0ea;">어업용·공업용</div>
+          <div style="font-size: 13.5px; color: #8a9088; line-height: 1.6">니트릴 방수코팅, 어업·공업·산업 현장용(오런#100)</div>
+        </div>
+      </div>
+
+      <div class="product-card" style="position: relative; overflow: hidden; border-radius: 18px; display: flex; align-items: stretch; height: 150px;">
+        <div class="product-glow" style="position: absolute; width: 420px; height: 130px; left: 50%; transform: translateX(-50%); bottom: -55px; background: radial-gradient(ellipse, rgba(242,98,45,0.34) 0%, rgba(242,98,45,0) 70%); pointer-events: none;"></div>
+        <div style="width: 229px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; position: relative; height: 160px">
+          <img src="images/ced3a47b0af09ce2b7310d67ed00ed12.png" style="width: 259px; height: 155px; object-fit: scale-down; padding: 10px; box-sizing: border-box;">
+        </div>
+        <div style="flex: 1; padding: 24px 28px; display: flex; flex-direction: column; justify-content: center; gap: 6px; position: relative;">
+          <div style="font-weight: 800; font-size: 24px; color: #f2f0ea;">고무장갑</div>
+          <div style="font-size: 13.5px; color: #8a9088; line-height: 1.6">30년 전통 후디스 고무장갑, 업소용부터 가정용까지</div>
+        </div>
+      </div>
+
+      <div class="product-card" style="position: relative; overflow: hidden; border-radius: 18px; display: flex; align-items: stretch; height: 150px;">
+        <div class="product-glow" style="position: absolute; width: 420px; height: 130px; left: 50%; transform: translateX(-50%); bottom: -55px; background: radial-gradient(ellipse, rgba(242,98,45,0.34) 0%, rgba(242,98,45,0) 70%); pointer-events: none;"></div>
+        <div style="width: 229px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; position: relative; height: 160px">
+          <img src="images/1ad09aa6d5292cc028f418221562accf.png" style="width: 259px; height: 155px; object-fit: scale-down; padding: 10px; box-sizing: border-box;">
+        </div>
+        <div style="flex: 1; padding: 24px 28px; display: flex; flex-direction: column; justify-content: center; gap: 6px; position: relative;">
+          <div style="font-weight: 800; font-size: 24px; color: #f2f0ea;">코팅장갑</div>
+          <div style="font-size: 13.5px; color: #8a9088; line-height: 1.6">PU·니트릴 코팅으로 내구성과 그립감을 높인 작업용 장갑</div>
+        </div>
+      </div>
+
+      <div class="product-card" style="position: relative; overflow: hidden; border-radius: 18px; display: flex; align-items: stretch; height: 150px;">
+        <div class="product-glow" style="position: absolute; width: 420px; height: 130px; left: 50%; transform: translateX(-50%); bottom: -55px; background: radial-gradient(ellipse, rgba(242,98,45,0.34) 0%, rgba(242,98,45,0) 70%); pointer-events: none;"></div>
+        <div style="width: 229px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; position: relative; height: 160px">
+          <img src="images/a6b017f43f5620e9d68acb96b5b1dba3.png" style="width: 259px; height: 155px; object-fit: scale-down; padding: 10px; box-sizing: border-box;">
+        </div>
+        <div style="flex: 1; padding: 24px 28px; display: flex; flex-direction: column; justify-content: center; gap: 6px; position: relative;">
+          <div style="font-weight: 800; font-size: 24px; color: #f2f0ea;">작업용장갑</div>
+          <div style="font-size: 13.5px; color: #8a9088; line-height: 1.6">일상생활과 작업현장에서 두루 쓰는 작업용 장갑</div>
+        </div>
+      </div>
+
+      <div class="product-card" style="position: relative; overflow: hidden; border-radius: 18px; display: flex; align-items: stretch; height: 150px;">
+        <div class="product-glow" style="position: absolute; width: 420px; height: 130px; left: 50%; transform: translateX(-50%); bottom: -55px; background: radial-gradient(ellipse, rgba(242,98,45,0.34) 0%, rgba(242,98,45,0) 70%); pointer-events: none;"></div>
+        <div style="width: 229px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; position: relative; height: 160px">
+          <img src="images/af6b28fefc5fbc148df2e6e65f95962e.png" style="width: 259px; height: 155px; object-fit: scale-down; padding: 10px; box-sizing: border-box;">
+        </div>
+        <div style="flex: 1; padding: 24px 28px; display: flex; flex-direction: column; justify-content: center; gap: 6px; position: relative;">
+          <div style="font-weight: 800; font-size: 24px; color: #f2f0ea;">기타 용품</div>
+          <div style="font-size: 13.5px; color: #8a9088; line-height: 1.6">장갑 외 위생 관련 다양한 용품</div>
+        </div>
+      </div>
+
+      <div class="product-card" style="position: relative; overflow: hidden; border-radius: 18px; display: flex; align-items: stretch; height: 150px;">
+        <div class="product-glow" style="position: absolute; width: 420px; height: 130px; left: 50%; transform: translateX(-50%); bottom: -55px; background: radial-gradient(ellipse, rgba(242,98,45,0.34) 0%, rgba(242,98,45,0) 70%); pointer-events: none;"></div>
+        <div style="width: 229px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; position: relative; height: 160px">
+          <img src="images/6e05e84536d820c9fe45abad81decbff.png" style="width: 259px; height: 155px; object-fit: scale-down; padding: 10px; box-sizing: border-box;">
+        </div>
+        <div style="flex: 1; padding: 24px 28px; display: flex; flex-direction: column; justify-content: center; gap: 6px; position: relative;">
+          <div style="font-weight: 800; font-size: 24px; color: #f2f0ea;">의료용장갑</div>
+          <div style="font-size: 13.5px; color: #8a9088; line-height: 1.6">위생·의료 환경을 위한 장갑</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- testimonials -->
+  <div style="width: 100%; box-sizing: border-box; padding: 96px 64px; background: #0b0c0a; display: flex; flex-direction: column; align-items: center; gap: 56px;">
+    <div style="display:flex; flex-direction:column; gap:22px; align-items:center; text-align:center;">
+      <div style="display: inline-flex; align-items: center; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.16); color: #ff7a45; border-radius: 999px; padding: 9px 20px; font-size: 13px; font-weight: 600; width: fit-content">REVIEWS</div>
+      <div style="font-size: 36px; font-weight: 800; color:#f9f7f1;">고객이 말하는 오런 장갑</div>
+      <div style="font-size: 13px; color:#6b716a;">예시 후기 — 실제 고객 후기로 교체 예정</div>
+    </div>
+    <div style="display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 20px; width: 100%; max-width: 1100px;">
+
+      <div class="product-card" style="position: relative; overflow: hidden; border-radius: 18px; padding: 32px; display:flex; flex-direction:column; gap:20px;">
+        <div class="product-glow" style="position: absolute; width: 420px; height: 130px; left: 50%; transform: translateX(-50%); bottom: -55px; background: radial-gradient(ellipse, rgba(242,98,45,0.34) 0%, rgba(242,98,45,0) 70%); pointer-events: none;"></div>
+        <div style="display:flex; gap:3px; position: relative;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="#FF7A45"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"></path></svg>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="#FF7A45"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"></path></svg>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="#FF7A45"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"></path></svg>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="#FF7A45"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"></path></svg>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="#FF7A45"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"></path></svg>
+        </div>
+        <div style="font-size:15px; color:#c9c4b6; line-height:1.75; position: relative;">필요한 만큼만 소량으로 살 수 있어서 재고 부담이 줄었어요.</div>
+        <div style="display:flex; align-items:center; justify-content:space-between; position: relative;">
+          <div style="font-size:14px; font-weight:700; color:#f2f0ea;">개인 고객 (요식업)</div>
+          <div style="font-size:11px; font-weight:700; color:#8a9088; background:rgba(255,255,255,0.07); border-radius:999px; padding:3px 10px;">예시</div>
+        </div>
+      </div>
+
+      <div class="product-card" style="position: relative; overflow: hidden; border-radius: 18px; padding: 32px; display:flex; flex-direction:column; gap:20px;">
+        <div class="product-glow" style="position: absolute; width: 420px; height: 130px; left: 50%; transform: translateX(-50%); bottom: -55px; background: radial-gradient(ellipse, rgba(242,98,45,0.34) 0%, rgba(242,98,45,0) 70%); pointer-events: none;"></div>
+        <div style="display:flex; gap:3px; position: relative;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="#FF7A45"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"></path></svg>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="#FF7A45"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"></path></svg>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="#FF7A45"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"></path></svg>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="#FF7A45"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"></path></svg>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="#FF7A45"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"></path></svg>
+        </div>
+        <div style="font-size:15px; color:#c9c4b6; line-height:1.75; position: relative;">사업자 확인만 되면 전화 없이도 견적을 빨리 받을 수 있어 편했습니다.</div>
+        <div style="display:flex; align-items:center; justify-content:space-between; position: relative;">
+          <div style="font-size:14px; font-weight:700; color:#f2f0ea;">사업자 회원 (유통업)</div>
+          <div style="font-size:11px; font-weight:700; color:#8a9088; background:rgba(255,255,255,0.07); border-radius:999px; padding:3px 10px;">예시</div>
+        </div>
+      </div>
+
+      <div class="product-card" style="position: relative; overflow: hidden; border-radius: 18px; padding: 32px; display:flex; flex-direction:column; gap:20px;">
+        <div class="product-glow" style="position: absolute; width: 420px; height: 130px; left: 50%; transform: translateX(-50%); bottom: -55px; background: radial-gradient(ellipse, rgba(242,98,45,0.34) 0%, rgba(242,98,45,0) 70%); pointer-events: none;"></div>
+        <div style="display:flex; gap:3px; position: relative;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="#FF7A45"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"></path></svg>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="#FF7A45"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"></path></svg>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="#FF7A45"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"></path></svg>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="#FF7A45"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"></path></svg>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="#FF7A45"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"></path></svg>
+        </div>
+        <div style="font-size:15px; color:#c9c4b6; line-height:1.75; position: relative;">30년 넘게 장갑만 만든 회사라 품질은 믿고 씁니다.</div>
+        <div style="display:flex; align-items:center; justify-content:space-between; position: relative;">
+          <div style="font-size:14px; font-weight:700; color:#f2f0ea;">정기구매 고객</div>
+          <div style="font-size:11px; font-weight:700; color:#8a9088; background:rgba(255,255,255,0.07); border-radius:999px; padding:3px 10px;">예시</div>
+        </div>
+      </div>
+
+      <div class="product-card" style="position: relative; overflow: hidden; border-radius: 18px; padding: 32px; display:flex; flex-direction:column; gap:20px;">
+        <div class="product-glow" style="position: absolute; width: 420px; height: 130px; left: 50%; transform: translateX(-50%); bottom: -55px; background: radial-gradient(ellipse, rgba(242,98,45,0.34) 0%, rgba(242,98,45,0) 70%); pointer-events: none;"></div>
+        <div style="display:flex; gap:3px; position: relative;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="#FF7A45"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"></path></svg>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="#FF7A45"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"></path></svg>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="#FF7A45"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"></path></svg>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="#FF7A45"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"></path></svg>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="#FF7A45"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"></path></svg>
+        </div>
+        <div style="font-size:15px; color:#c9c4b6; line-height:1.75; position: relative;">여러 종류를 한 곳에서 다 살 수 있어서 주문이 훨씬 간단해졌어요.</div>
+        <div style="display:flex; align-items:center; justify-content:space-between; position: relative;">
+          <div style="font-size:14px; font-weight:700; color:#f2f0ea;">사업자 회원 (식자재 유통)</div>
+          <div style="font-size:11px; font-weight:700; color:#8a9088; background:rgba(255,255,255,0.07); border-radius:999px; padding:3px 10px;">예시</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- closing slogan + CTA -->
+  <div style="width: 100%; box-sizing: border-box; padding: 88px 64px; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 28px; background: #0b0c0a;">
+    <div style="font-size: 28px; font-weight: 800; line-height: 1.5; color: #f9f7f1; max-width: 640px;">지금 바로<br>온라인으로 시작하세요.</div>
+    <div style="display: flex; gap: 12px;">
+      <button class="btn cta-pulse" style="background: #F2622D; color: #0a0a0a; padding: 16px 32px; font-size: 16px;" onclick="showBusiness()">사업자 회원 문의하기</button>
+      <a href="https://orun.kr/skin-skin1" target="_blank" rel="noopener">
+        <button class="btn" style="background: transparent; color: #f2f0ea; border-color: rgba(255,255,255,0.22); padding: 16px 32px; font-size: 16px;">공식 홈페이지 바로가기</button>
+      </a>
+    </div>
+  </div>
+
+  <!-- footer -->
+  <div style="width: 100%; box-sizing: border-box; padding: 40px 64px; border-top: 1px solid rgba(255,255,255,0.08); display: flex; flex-direction: column; gap: 6px; font-size: 12.5px; color: #6b716a;">
+    <div>주식회사 오런 · 대표 유상일 · 부산 사상구 가야대로 22 · 사업자등록번호 606-86-48752 · 통신판매업 신고 2018부산사상구0279</div>
+    <div>고객센터 080-851-0586 (평일 10:00~17:00, 점심 12:00~13:00, 토/일/공휴일 휴무) · 본 시안은 채용 지원용 아이디어 제안 프로토타입입니다.</div>
+  </div>
+
+  </div>
+  <!-- /view-home -->
+
+  <!-- ========== BUSINESS CONTACT VIEW ========== -->
+  <div id="view-business">
+  <div style="width: 100%; box-sizing: border-box; padding: 72px 64px; display: flex; flex-direction: column; gap: 32px; min-height: 760px;">
+    <button style="background:none; border:none; padding:0; display:flex; align-items:center; gap:6px; font-size:14px; color:#9aa39c; width:fit-content;" onclick="showHome()">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M15 6l-6 6 6 6" stroke="#9aa39c" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+      홈으로
+    </button>
+
+    <div style="display:flex; flex-direction:column; gap:8px;">
+      <div style="font-size:13px; font-weight:700; color:#FF7A45; letter-spacing:.4px;">BUSINESS CONTACT</div>
+      <div style="font-size: 34px; font-weight: 800; color:#f9f7f1;">사업자 회원 문의</div>
+      <div style="font-size: 15px; color:#9aa39c; line-height:1.7;">전화하지 않아도 괜찮습니다. 회사명과 연락처, 원하시는 견적·수량을 남겨주시면 담당자가 확인 후 순차적으로 연락드립니다.</div>
+    </div>
+
+    <div style="display:grid; grid-template-columns: 1fr 1.4fr; gap: 24px;">
+
+      <!-- left: contact info -->
+      <div style="display:flex; flex-direction:column; gap:16px;">
+        <div class="card" style="padding: 28px; display:flex; flex-direction:column; gap:20px;">
+          <div style="display:flex; flex-direction:column; gap:4px;">
+            <div style="font-size:12.5px; font-weight:700; color:#6b716a; letter-spacing:.3px;">회사소개</div>
+            <div style="font-size:15px; font-weight:700; color:#f2f0ea;">주식회사 오런 · 30년 장갑 전문기업</div>
+          </div>
+          <div style="display:flex; flex-direction:column; gap:4px;">
+            <div style="font-size:12.5px; font-weight:700; color:#6b716a; letter-spacing:.3px;">대표전화</div>
+            <div style="font-size:20px; font-weight:800; color:#f9f7f1;">080-851-0586</div>
+            <div style="font-size:12.5px; color:#6b716a;">평일 10:00~17:00 · 점심 12:00~13:00 · 토/일/공휴일 휴무</div>
+          </div>
+          <div style="display:flex; flex-direction:column; gap:4px;">
+            <div style="font-size:12.5px; font-weight:700; color:#6b716a; letter-spacing:.3px;">오시는 길</div>
+            <div style="font-size:14px; color:#c9c4b6; line-height:1.6;">부산 사상구 가야대로 22 오런장갑</div>
+          </div>
+        </div>
+        <div class="card" style="padding: 24px; display:flex; flex-direction:column; gap:10px; background:rgba(242,98,45,0.08); border-color:rgba(242,98,45,0.28);">
+          <div style="font-size:13px; font-weight:800; color:#FF7A45;">문의 후 진행 절차</div>
+          <div style="font-size:13px; color:#c9c4b6; line-height:1.7;">① 아래 내용 작성 후 제출 → ② 담당자가 사업자 정보 확인(1~2일 이내) → ③ 이메일·연락처로 맞춤 견적 회신</div>
+        </div>
+      </div>
+
+      <!-- right: form -->
+      <div class="card" style="padding: 32px; display:flex; flex-direction:column; gap:18px;">
+        <div class="field">
+          <label>회사명(사업자명)</label>
+          <input type="text" placeholder="예) 오런상사">
+        </div>
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:18px;">
+          <div class="field">
+            <label>담당자 연락처</label>
+            <input type="tel" placeholder="010-0000-0000">
+          </div>
+          <div class="field">
+            <label>이메일</label>
+            <input type="email" placeholder="example@company.com">
+          </div>
+        </div>
+        <div class="field">
+          <label>문의·견적 내용</label>
+          <textarea rows="6" placeholder="원하시는 제품, 수량, 납기 등을 자유롭게 적어주세요. 예) 니트릴 위생장갑 100매 박스 500개, 월 정기 구매 희망"></textarea>
+        </div>
+        <button class="btn" style="background:#F2622D; color:#0a0a0a; align-self:flex-start; padding: 14px 34px;">문의 보내기</button>
+        <div style="font-size:12px; color:#6b716a;">* 이 화면은 아이디어 시안이며, 실제 제출 기능은 연결되어 있지 않습니다.</div>
+      </div>
+    </div>
+  </div>
+  </div>
+  <!-- /view-business -->
+
+</div>
+
+<script>
+  function showHome() {
+    document.getElementById('view-home').style.display = '';
+    document.getElementById('view-business').style.display = 'none';
+    window.scrollTo(0, 0);
+  }
+  function showBusiness() {
+    document.getElementById('view-home').style.display = 'none';
+    document.getElementById('view-business').style.display = '';
+    window.scrollTo(0, 0);
+  }
+</script>
+</body>
+</html>
